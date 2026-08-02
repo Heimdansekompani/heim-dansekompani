@@ -47,12 +47,14 @@ Project pages are built from **sections** of one or two **blocks**
 - Media blocks: images or video (player or ambient autoplay loop), blur
   levels, per-item captions/credits, width + placement controls
 - **Slideshows**: 2+ images in a block become a looping carousel — swipe,
-  arrows and dots always available, optional timed auto-advance (disabled
-  for `prefers-reduced-motion`), full-width view or a 2–4-wide filmstrip
+  arrows and dots always available, optional auto-advance as timed steps or
+  a continuous glide with three speeds (disabled for
+  `prefers-reduced-motion`), full-width view or a 2–4-wide filmstrip
 - Rich text: sizes, colors, alignment, lists, links — including links
   styled as buttons ("Knapp") for e.g. ticket sales
 - Section styling: background color bands, width (standard / 90 % / full
-  bleed), flush spacing between sections; per-page background color
+  bleed), adjustable gap to the previous section (standard / small / none);
+  per-page background color
 
 Sections are stored as versioned JSON in Firestore and **migrate on read**:
 old documents are normalized to the current shape when loaded and rewritten

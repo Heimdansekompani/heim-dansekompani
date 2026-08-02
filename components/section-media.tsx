@@ -9,6 +9,7 @@ import {
 } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
+import AutoScroll from "embla-carousel-auto-scroll";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   CldImage,
@@ -20,6 +21,7 @@ import {
 import {
   BLUR_STRENGTH,
   type BlurLevel,
+  type ContinuousSpeed,
   type MediaBlock,
   type ProjectMedia,
 } from "@/lib/project";
@@ -161,6 +163,13 @@ function SingleMedia({
   );
 }
 
+// Pixels per frame for continuous auto-scroll.
+const AUTO_SCROLL_SPEED: Record<ContinuousSpeed, number> = {
+  slow: 0.5,
+  medium: 1,
+  fast: 2,
+};
+
 // Conservative until measured: no auto-advance on the server render or
 // before the media query resolves.
 function usePrefersReducedMotion(): boolean {
@@ -179,18 +188,29 @@ function MediaSlideshow({ block, playerId, sizes }: SectionMediaProps) {
   const { items, slideshow } = block;
   const prefersReducedMotion = usePrefersReducedMotion();
 
-  // stopOnInteraction: false = an interaction only resets the timer, so the
-  // slideshow pauses while the visitor is engaging and resumes afterwards.
+  // stopOnInteraction: false = an interaction only pauses the movement, so
+  // the slideshow rests while the visitor is engaging and resumes afterwards.
+  const pauseOptions = {
+    stopOnInteraction: false,
+    stopOnMouseEnter: true,
+    stopOnFocusIn: true,
+  } as const;
   const autoplay =
     slideshow.autoAdvance && !prefersReducedMotion
-      ? [
-          Autoplay({
-            delay: slideshow.intervalSeconds * 1000,
-            stopOnInteraction: false,
-            stopOnMouseEnter: true,
-            stopOnFocusIn: true,
-          }),
-        ]
+      ? slideshow.advanceMode === "continuous"
+        ? [
+            AutoScroll({
+              speed: AUTO_SCROLL_SPEED[slideshow.continuousSpeed],
+              startDelay: 0,
+              ...pauseOptions,
+            }),
+          ]
+        : [
+            Autoplay({
+              delay: slideshow.intervalSeconds * 1000,
+              ...pauseOptions,
+            }),
+          ]
       : [];
   const [viewportRef, emblaApi] = useEmblaCarousel({ loop: true }, autoplay);
   const [selected, setSelected] = useState(0);

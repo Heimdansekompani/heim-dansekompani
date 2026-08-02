@@ -38,6 +38,7 @@ import {
   type SectionMode,
   type SectionWidth,
   type SplitPercent,
+  type TopGap,
   type VerticalAlign,
 } from "@/lib/project";
 import { cn } from "@/lib/utils";
@@ -668,16 +669,27 @@ export function SectionEditor({
                   </p>
                 </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor={`flush-${section.id}`}>
-                    Ingen avstand til forrige seksjon
-                  </Label>
-                  <Switch
-                    id={`flush-${section.id}`}
-                    checked={style.flushTop}
+                <div>
+                  <Label>Avstand til forrige seksjon</Label>
+                  <ToggleGroup
+                    className="mt-1.5"
+                    variant="outline"
+                    multiple={false}
                     disabled={index === 0}
-                    onCheckedChange={(flushTop) => updateStyle({ flushTop })}
-                  />
+                    value={[style.topGap]}
+                    onValueChange={(value) => {
+                      const next = value[0] as TopGap | undefined;
+                      if (next) updateStyle({ topGap: next });
+                    }}
+                  >
+                    <ToggleGroupItem value="standard">Standard</ToggleGroupItem>
+                    <ToggleGroupItem value="small">Liten</ToggleGroupItem>
+                    <ToggleGroupItem value="none">Ingen</ToggleGroupItem>
+                  </ToggleGroup>
+                  <p className="mt-1.5 max-w-64 font-serif text-xs text-white/40">
+                    «Ingen» lar bilder i naboseksjoner ligge helt inntil
+                    hverandre.
+                  </p>
                 </div>
               </div>
             </CollapsiblePanel>

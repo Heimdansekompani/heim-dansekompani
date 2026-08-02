@@ -91,7 +91,11 @@ function renderMarks(
   text: string,
   marks: JSONContent["marks"] = [],
 ): ReactNode {
-  return marks.reduce<ReactNode>((withMarks, mark) => {
+  // reduceRight: ProseMirror renders a node's marks first-in-array outermost,
+  // so wrap from the end to match the editor's DOM. The order matters — a
+  // fontSize/color span must sit *inside* a button link's <a> to override its
+  // baked-in text-sm/text-black, exactly as it does in the editor.
+  return marks.reduceRight<ReactNode>((withMarks, mark) => {
     switch (mark.type) {
       case "bold":
         return <strong>{withMarks}</strong>;

@@ -2,7 +2,11 @@
 
 import { cn } from "@/lib/utils";
 import { ProjectSection } from "@/components/project-section";
-import type { ProjectSectionData, SectionWidth } from "@/lib/project";
+import type {
+  ProjectSectionData,
+  SectionWidth,
+  TopGap,
+} from "@/lib/project";
 
 const WIDTH_CLASS: Record<SectionWidth, string | null> = {
   standard: "mx-auto max-w-6xl px-6",
@@ -11,6 +15,12 @@ const WIDTH_CLASS: Record<SectionWidth, string | null> = {
   // "full" on wide screens instead of converging with either.
   wide: "mx-auto w-[90%]",
   full: null,
+};
+
+const TOP_GAP_CLASS: Record<TopGap, string | null> = {
+  standard: "mt-16",
+  small: "mt-8",
+  none: null,
 };
 
 interface SectionListProps {
@@ -51,7 +61,7 @@ export function SectionList({
                 : undefined
             }
             className={cn(
-              index > 0 && !section.style.flushTop && "mt-16",
+              index > 0 && TOP_GAP_CLASS[section.style.topGap],
               // Breathing room only when a colored band exists.
               section.style.background && "py-8 @2xl:py-12",
             )}

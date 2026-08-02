@@ -19,12 +19,15 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { extractCloudinaryCrop } from "@/lib/cloudinary";
 import {
   BLUR_LEVELS,
+  CONTINUOUS_SPEEDS,
   SLIDESHOW_INTERVAL_MAX,
   SLIDESHOW_INTERVAL_MIN,
   STRIP_SLIDES_OPTIONS,
   type BlurLevel,
+  type ContinuousSpeed,
   type MediaBlock,
   type ProjectMedia,
+  type SlideshowAdvanceMode,
   type SlideshowView,
   type StripSlides,
   type VideoPlaybackMode,
@@ -38,6 +41,12 @@ const BLUR_LABEL: Record<BlurLevel, string> = {
   1: "Lett",
   2: "Middels",
   3: "Sterk",
+};
+
+const SPEED_LABEL: Record<ContinuousSpeed, string> = {
+  slow: "Sakte",
+  medium: "Middels",
+  fast: "Rask",
 };
 
 interface MediaBlockEditorProps {
@@ -227,39 +236,97 @@ export function MediaBlockEditor({ block, onChange }: MediaBlockEditorProps) {
               />
               <Label htmlFor={`auto-${block.id}`}>Automatisk bildebytte</Label>
             </div>
-            {slideshow.autoAdvance && (
-              <div className="flex items-center gap-2">
-                <Label htmlFor={`interval-${block.id}`}>
-                  Sekunder per bilde
-                </Label>
-                <NumberField
-                  value={slideshow.intervalSeconds}
-                  min={SLIDESHOW_INTERVAL_MIN}
-                  max={SLIDESHOW_INTERVAL_MAX}
-                  step={1}
+          </div>
+          {slideshow.autoAdvance && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <Label>Bevegelse</Label>
+                <ToggleGroup
+                  variant="outline"
+                  size="sm"
+                  multiple={false}
+                  value={[slideshow.advanceMode]}
                   onValueChange={(value) => {
-                    if (value === null) return;
-                    onChange({
-                      ...block,
-                      slideshow: {
-                        ...slideshow,
-                        intervalSeconds: Math.min(
-                          SLIDESHOW_INTERVAL_MAX,
-                          Math.max(SLIDESHOW_INTERVAL_MIN, Math.round(value)),
-                        ),
-                      },
-                    });
+                    const next = value[0] as SlideshowAdvanceMode | undefined;
+                    if (next) {
+                      onChange({
+                        ...block,
+                        slideshow: { ...slideshow, advanceMode: next },
+                      });
+                    }
                   }}
                 >
-                  <NumberFieldGroup>
-                    <NumberFieldDecrement>-</NumberFieldDecrement>
-                    <NumberFieldInput id={`interval-${block.id}`} />
-                    <NumberFieldIncrement>+</NumberFieldIncrement>
-                  </NumberFieldGroup>
-                </NumberField>
+                  <ToggleGroupItem value="snap">
+                    Bilde for bilde
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="continuous">
+                    Jevn glidning
+                  </ToggleGroupItem>
+                </ToggleGroup>
               </div>
-            )}
-          </div>
+              {slideshow.advanceMode === "snap" ? (
+                <div className="flex items-center gap-2">
+                  <Label htmlFor={`interval-${block.id}`}>
+                    Sekunder per bilde
+                  </Label>
+                  <NumberField
+                    value={slideshow.intervalSeconds}
+                    min={SLIDESHOW_INTERVAL_MIN}
+                    max={SLIDESHOW_INTERVAL_MAX}
+                    step={1}
+                    onValueChange={(value) => {
+                      if (value === null) return;
+                      onChange({
+                        ...block,
+                        slideshow: {
+                          ...slideshow,
+                          intervalSeconds: Math.min(
+                            SLIDESHOW_INTERVAL_MAX,
+                            Math.max(SLIDESHOW_INTERVAL_MIN, Math.round(value)),
+                          ),
+                        },
+                      });
+                    }}
+                  >
+                    <NumberFieldGroup>
+                      <NumberFieldDecrement>-</NumberFieldDecrement>
+                      <NumberFieldInput id={`interval-${block.id}`} />
+                      <NumberFieldIncrement>+</NumberFieldIncrement>
+                    </NumberFieldGroup>
+                  </NumberField>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  <Label>Hastighet</Label>
+                  <ToggleGroup
+                    variant="outline"
+                    size="sm"
+                    multiple={false}
+                    value={[slideshow.continuousSpeed]}
+                    onValueChange={(value) => {
+                      const next = value[0] as ContinuousSpeed | undefined;
+                      if (next) {
+                        onChange({
+                          ...block,
+                          slideshow: { ...slideshow, continuousSpeed: next },
+                        });
+                      }
+                    }}
+                  >
+                    {CONTINUOUS_SPEEDS.map((speed) => (
+                      <ToggleGroupItem key={speed} value={speed}>
+                        {SPEED_LABEL[speed]}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                  <p className="max-w-72 font-serif text-xs text-white/40">
+                    Bildene glir jevnt gjennom loopen. Bevegelsen pauser mens
+                    besøkende holder pekeren over eller sveiper.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 

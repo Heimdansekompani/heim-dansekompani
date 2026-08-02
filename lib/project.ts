@@ -69,13 +69,23 @@ export type SlideshowView = "single" | "strip";
 export const STRIP_SLIDES_OPTIONS = [2, 3, 4] as const;
 export type StripSlides = (typeof STRIP_SLIDES_OPTIONS)[number];
 
+// How auto-advance moves: "snap" steps one slide per interval, "continuous"
+// glides through the loop at a steady speed (intervalSeconds is ignored).
+export type SlideshowAdvanceMode = "snap" | "continuous";
+
+export const CONTINUOUS_SPEEDS = ["slow", "medium", "fast"] as const;
+export type ContinuousSpeed = (typeof CONTINUOUS_SPEEDS)[number];
+
 // Settings for a media block with 2+ items. Swipe/arrow/dot navigation and
 // looping are always on — autoAdvance only controls the timer. Persists on
 // single-item blocks (like SectionLayout's flat bag) so removing slides and
 // re-adding them later loses nothing.
 export interface SlideshowSettings {
   autoAdvance: boolean;
+  advanceMode: SlideshowAdvanceMode;
   intervalSeconds: number;
+  // continuous mode only.
+  continuousSpeed: ContinuousSpeed;
   view: SlideshowView;
   // strip only: slides visible at once on large screens.
   stripSlides: StripSlides;
@@ -169,14 +179,18 @@ export interface SectionLayout {
 // "full": edge to edge, no padding.
 export type SectionWidth = "standard" | "wide" | "full";
 
+// Vertical gap to the previous section. "standard" is the page's normal
+// section rhythm, "small" halves it, "none" lets adjacent media touch.
+export const TOP_GAP_OPTIONS = ["standard", "small", "none"] as const;
+export type TopGap = (typeof TOP_GAP_OPTIONS)[number];
+
 export interface SectionStyle {
   // Section background hex; null = transparent. Rendered as a full-viewport
   // band behind the section's content column.
   background: string | null;
   // How much of the viewport the section's content may use.
   width: SectionWidth;
-  // No gap to the previous section, so adjacent media can touch.
-  flushTop: boolean;
+  topGap: TopGap;
 }
 
 export interface ProjectSectionData {
@@ -209,7 +223,9 @@ export function createMediaBlock(id?: string): MediaBlock {
 function createDefaultSlideshow(): SlideshowSettings {
   return {
     autoAdvance: false,
+    advanceMode: "snap",
     intervalSeconds: SLIDESHOW_INTERVAL_DEFAULT,
+    continuousSpeed: "medium",
     view: "single",
     stripSlides: 3,
   };
@@ -230,7 +246,7 @@ export function createEmptySection(): ProjectSectionData {
     id: crypto.randomUUID(),
     version: 2,
     layout: createDefaultLayout(),
-    style: { background: null, width: "standard", flushTop: false },
+    style: { background: null, width: "standard", topGap: "standard" },
     blocks: [createMediaBlock(), createTextBlock()],
   };
 }
@@ -334,7 +350,7 @@ function normalizeLegacySection(
   const style: SectionStyle = {
     background: null,
     width: "standard",
-    flushTop: false,
+    topGap: "standard",
   };
 
   if (widthPercent === 0) {
@@ -453,7 +469,9 @@ function normalizeSlideshow(raw: unknown): SlideshowSettings {
       : SLIDESHOW_INTERVAL_DEFAULT;
   return {
     autoAdvance: settings.autoAdvance === true,
+    advanceMode: settings.advanceMode === "continuous" ? "continuous" : "snap",
     intervalSeconds: interval,
+    continuousSpeed: oneOf(CONTINUOUS_SPEEDS, settings.continuousSpeed, "medium"),
     view: settings.view === "strip" ? "strip" : "single",
     stripSlides: oneOf(STRIP_SLIDES_OPTIONS, settings.stripSlides, 3),
   };
@@ -469,7 +487,12 @@ function normalizeStyle(raw: unknown): SectionStyle {
       style.width,
       style.fullBleed === true ? "full" : "standard",
     ),
-    flushTop: style.flushTop === true,
+    // Migrates the pre-topGap boolean: flushTop: true → "none".
+    topGap: oneOf(
+      TOP_GAP_OPTIONS,
+      style.topGap,
+      style.flushTop === true ? "none" : "standard",
+    ),
   };
 }
 
