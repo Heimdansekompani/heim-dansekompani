@@ -62,6 +62,13 @@ interface ProjectSectionProps {
 export function ProjectSection({ section, idPrefix = "" }: ProjectSectionProps) {
   const { layout, blocks } = section;
 
+  // A "full" section drops the page column's padding so media can touch the
+  // viewport edges — but text pressed against the edge is unreadable, so
+  // text blocks bring their own padding there (matching the overlay layer's
+  // p-6/@2xl:p-12).
+  const textPad =
+    section.style.width === "full" ? "px-6 @2xl:px-12" : undefined;
+
   const blockView = (block: SectionBlock, sizes?: string) =>
     block.kind === "media" ? (
       <SectionMedia
@@ -70,8 +77,29 @@ export function ProjectSection({ section, idPrefix = "" }: ProjectSectionProps) 
         sizes={sizes}
       />
     ) : (
-      <TextBlockView block={block} />
+      <TextBlockView block={block} className={textPad} />
     );
+
+  // Split columns only: media honors its own widthPercent/align inside the
+  // column, like text blocks do. "single"/"overlay" size the whole block via
+  // layout.blockWidthPercent — applying both would compound the two widths.
+  const splitBlockView = (block: SectionBlock, sizes?: string) => {
+    if (block.kind !== "media" || block.widthPercent === 100) {
+      return blockView(block, sizes);
+    }
+    return (
+      <div
+        style={{ "--media-w": `${block.widthPercent}%` } as CSSProperties}
+        className={cn(
+          "w-full @2xl:max-w-[var(--media-w)]",
+          block.align === "center" && "@2xl:mx-auto",
+          block.align === "right" && "@2xl:ml-auto",
+        )}
+      >
+        {blockView(block, sizes)}
+      </div>
+    );
+  };
 
   if (layout.mode === "overlay") {
     const media = blocks.find(isMediaBlock);
@@ -119,7 +147,7 @@ export function ProjectSection({ section, idPrefix = "" }: ProjectSectionProps) 
           </div>
         )}
         {text && layout.overlayNarrow === "stack" && (
-          <div className="mt-4 @2xl:hidden">
+          <div className={cn("mt-4 @2xl:hidden", textPad)}>
             <RenderRichText content={text.richText} />
           </div>
         )}
@@ -133,7 +161,9 @@ export function ProjectSection({ section, idPrefix = "" }: ProjectSectionProps) 
     // A lone text block sizes/positions itself (Tekstbredde + Plassering on
     // the block) — the section-level width only applies to media, matching
     // which controls the editor exposes.
-    if (block.kind === "text") return <TextBlockView block={block} />;
+    if (block.kind === "text") {
+      return <TextBlockView block={block} className={textPad} />;
+    }
     return (
       <div
         style={{ "--w": `${layout.blockWidthPercent}%` } as CSSProperties}
@@ -157,7 +187,13 @@ export function ProjectSection({ section, idPrefix = "" }: ProjectSectionProps) 
     // grid container, so the math is exact; max(0%, …) keeps a too-wide
     // second block from overflowing the page. Below @2xl this degrades to
     // the plain stacked flow.
-    const overlapWidth = isTextBlock(second) ? second.widthPercent : 50;
+    // A floating media block at 100% would cover the whole row, so 100 is
+    // treated as "unset" and falls back to the historical 50.
+    const overlapWidth = isTextBlock(second)
+      ? second.widthPercent
+      : second.widthPercent === 100
+        ? 50
+        : second.widthPercent;
     return (
       <div
         style={
@@ -187,7 +223,11 @@ export function ProjectSection({ section, idPrefix = "" }: ProjectSectionProps) 
           )}
         >
           {isTextBlock(second) ? (
-            <TextBlockView block={second} constrainWidth={false} />
+            <TextBlockView
+              block={second}
+              constrainWidth={false}
+              className={textPad}
+            />
           ) : (
             blockView(second)
           )}
@@ -213,9 +253,9 @@ export function ProjectSection({ section, idPrefix = "" }: ProjectSectionProps) 
           layout.reverseStack && "order-last @2xl:order-none",
         )}
       >
-        {blockView(first)}
+        {splitBlockView(first)}
       </div>
-      <div className="min-w-0 w-full flex-1">{blockView(second)}</div>
+      <div className="min-w-0 w-full flex-1">{splitBlockView(second)}</div>
     </div>
   );
 }
@@ -223,14 +263,25 @@ export function ProjectSection({ section, idPrefix = "" }: ProjectSectionProps) 
 function TextBlockView({
   block,
   constrainWidth = true,
+  className,
 }: {
   block: TextBlock;
   // The overlap and overlay layouts size/position the text's wrapper
   // themselves — applying widthPercent again inside would compound the two
   // (50% of a 50% wrapper = 25%).
   constrainWidth?: boolean;
+  // Extra classes on the wrapper — used for full-bleed sections' text
+  // padding.
+  className?: string;
 }) {
-  if (!constrainWidth) return <RenderRichText content={block.richText} />;
+  if (!constrainWidth) {
+    if (!className) return <RenderRichText content={block.richText} />;
+    return (
+      <div className={className}>
+        <RenderRichText content={block.richText} />
+      </div>
+    );
+  }
   return (
     <div
       style={{ "--text-w": `${block.widthPercent}%` } as CSSProperties}
@@ -238,6 +289,7 @@ function TextBlockView({
         "w-full @2xl:max-w-[var(--text-w)]",
         block.align === "center" && "@2xl:mx-auto",
         block.align === "right" && "@2xl:ml-auto",
+        className,
       )}
     >
       <RenderRichText content={block.richText} />

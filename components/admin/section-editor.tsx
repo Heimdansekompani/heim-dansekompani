@@ -36,6 +36,7 @@ import {
   type ProjectSectionData,
   type SectionBlock,
   type SectionMode,
+  type SectionWidth,
   type SplitPercent,
   type VerticalAlign,
 } from "@/lib/project";
@@ -376,6 +377,73 @@ export function SectionEditor({
                           )}
                         </>
                       )}
+                      {/* In split mode the column width comes from
+                          Fordeling; these size the image *within* its
+                          column, mirroring the text block's Tekstbredde. */}
+                      {layout.mode === "split" && (
+                        <>
+                          <div className="flex flex-col gap-1.5">
+                            <Label>
+                              Bildebredde i blokken (store skjermer)
+                            </Label>
+                            <ToggleGroup
+                              variant="outline"
+                              multiple={false}
+                              value={[String(block.widthPercent)]}
+                              onValueChange={(value) => {
+                                const next = value[0];
+                                if (next === undefined) return;
+                                updateBlock({
+                                  ...block,
+                                  widthPercent: Number(
+                                    next,
+                                  ) as BlockWidthPercent,
+                                });
+                              }}
+                            >
+                              {BLOCK_WIDTH_OPTIONS.map((option) => (
+                                <ToggleGroupItem
+                                  key={option}
+                                  value={String(option)}
+                                >
+                                  {option === 100 ? "Full" : `${option} %`}
+                                </ToggleGroupItem>
+                              ))}
+                            </ToggleGroup>
+                            <p className="font-serif text-xs text-white/40">
+                              På små skjermer brukes alltid full bredde.
+                            </p>
+                          </div>
+                          {block.widthPercent !== 100 && (
+                            <div className="flex flex-col gap-1.5">
+                              <Label>Plassering (store skjermer)</Label>
+                              <ToggleGroup
+                                variant="outline"
+                                multiple={false}
+                                value={[block.align]}
+                                onValueChange={(value) => {
+                                  const next = value[0] as
+                                    | HorizontalAlign
+                                    | undefined;
+                                  if (next) {
+                                    updateBlock({ ...block, align: next });
+                                  }
+                                }}
+                              >
+                                <ToggleGroupItem value="left">
+                                  Venstre
+                                </ToggleGroupItem>
+                                <ToggleGroupItem value="center">
+                                  Midt
+                                </ToggleGroupItem>
+                                <ToggleGroupItem value="right">
+                                  Høyre
+                                </ToggleGroupItem>
+                              </ToggleGroup>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </>
                   ) : (
                     <TextBlockEditor block={block} onChange={updateBlock} />
@@ -412,7 +480,7 @@ export function SectionEditor({
               />
             </CollapsibleTrigger>
             <CollapsiblePanel>
-              <div className="mt-4 flex flex-wrap items-start gap-x-8 gap-y-5">
+              <div className="mt-4 grid grid-cols-1 items-start gap-x-8 gap-y-7 md:grid-cols-[auto_auto] md:justify-between xl:grid-cols-[auto_auto_auto]">
                 {layout.mode === "split" && (
                   <>
                     <div>
@@ -486,8 +554,7 @@ export function SectionEditor({
                         onCheckedChange={setOverlap}
                       />
                       <p className="max-w-64 font-serif text-xs text-white/40">
-                        Midten av blokk 2 legges på kanten av blokk 1. På små
-                        skjermer vises blokkene under hverandre som vanlig.
+                        Merger blokk 1 og blokk 2
                       </p>
                     </div>
                     {layout.overlap === "half" && (
@@ -572,20 +639,33 @@ export function SectionEditor({
                 )}
 
                 <ColorField
-                  label="Bakgrunnsfarge for seksjonen"
+                  label="Bakgrunnsfarge Seksjon"
                   value={style.background}
                   onChange={(background) => updateStyle({ background })}
                 />
 
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor={`fullbleed-${section.id}`}>
-                    Full bredde (kant til kant)
-                  </Label>
-                  <Switch
-                    id={`fullbleed-${section.id}`}
-                    checked={style.fullBleed}
-                    onCheckedChange={(fullBleed) => updateStyle({ fullBleed })}
-                  />
+                <div>
+                  <Label>Seksjonsbredde</Label>
+                  <ToggleGroup
+                    className="mt-1.5"
+                    variant="outline"
+                    multiple={false}
+                    value={[style.width]}
+                    onValueChange={(value) => {
+                      const next = value[0] as SectionWidth | undefined;
+                      if (next) updateStyle({ width: next });
+                    }}
+                  >
+                    <ToggleGroupItem value="standard">Standard</ToggleGroupItem>
+                    <ToggleGroupItem value="wide">90%</ToggleGroupItem>
+                    <ToggleGroupItem value="full">
+                      100%
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                  <p className="mt-1.5 max-w-64 font-serif text-xs text-white/40">
+                    Gjelder på store skjermer — på små er
+                    alle like brede.
+                  </p>
                 </div>
 
                 <div className="flex flex-col gap-1.5">

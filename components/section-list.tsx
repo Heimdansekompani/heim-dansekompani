@@ -2,7 +2,16 @@
 
 import { cn } from "@/lib/utils";
 import { ProjectSection } from "@/components/project-section";
-import type { ProjectSectionData } from "@/lib/project";
+import type { ProjectSectionData, SectionWidth } from "@/lib/project";
+
+const WIDTH_CLASS: Record<SectionWidth, string | null> = {
+  standard: "mx-auto max-w-6xl px-6",
+  // A real 90% of the container at every size (labeled «90 %» in the
+  // editor) — no fixed cap, so it stays visibly between "standard" and
+  // "full" on wide screens instead of converging with either.
+  wide: "mx-auto w-[90%]",
+  full: null,
+};
 
 interface SectionListProps {
   sections: ProjectSectionData[];
@@ -47,9 +56,7 @@ export function SectionList({
               section.style.background && "py-8 @2xl:py-12",
             )}
           >
-            <div
-              className={cn(!section.style.fullBleed && "mx-auto max-w-6xl px-6")}
-            >
+            <div className={cn(WIDTH_CLASS[section.style.width])}>
               <ProjectSection section={section} idPrefix={idPrefix} />
             </div>
           </section>

@@ -367,6 +367,18 @@ export function ProjectForm({ mode, slug, initialProject }: ProjectFormProps) {
               type="date"
               value={eventDate}
               onChange={(event) => setEventDate(event.target.value)}
+              // The native picker only opens from the calendar icon, which
+              // browsers draw black (invisible on the dark theme). Invert
+              // the icon and open the picker from a click anywhere in the
+              // field.
+              className="cursor-pointer [&::-webkit-calendar-picker-indicator]:invert"
+              onClick={(event) => {
+                try {
+                  event.currentTarget.showPicker();
+                } catch {
+                  // Unsupported browser: segment editing still works.
+                }
+              }}
               required
             />
           </div>

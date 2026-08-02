@@ -92,6 +92,13 @@ export interface MediaBlock {
   // Applies to every item in the block.
   blur: BlurLevel;
   slideshow: SlideshowSettings;
+  // Width/placement within the block's own column, mirroring TextBlock —
+  // lets a split-mode image sit smaller and centered instead of filling its
+  // column. Large screens only (stacked layouts always use full width).
+  // "single"/"overlay" size the whole block via layout.blockWidthPercent
+  // instead, so only split mode reads these.
+  widthPercent: BlockWidthPercent;
+  align: HorizontalAlign;
 }
 
 export const TEXT_WIDTH_OPTIONS = [50, 60, 75, 100] as const;
@@ -157,12 +164,17 @@ export interface SectionLayout {
   overlayNarrow: "stack" | "overlay";
 }
 
+// "standard": the page's content column. "wide": a wider column cap, still
+// padded — sits between the column and the viewport edge on large screens.
+// "full": edge to edge, no padding.
+export type SectionWidth = "standard" | "wide" | "full";
+
 export interface SectionStyle {
   // Section background hex; null = transparent. Rendered as a full-viewport
   // band behind the section's content column.
   background: string | null;
-  // Content spans the viewport edge to edge instead of the page column.
-  fullBleed: boolean;
+  // How much of the viewport the section's content may use.
+  width: SectionWidth;
   // No gap to the previous section, so adjacent media can touch.
   flushTop: boolean;
 }
@@ -189,6 +201,8 @@ export function createMediaBlock(id?: string): MediaBlock {
     items: [],
     blur: 0,
     slideshow: createDefaultSlideshow(),
+    widthPercent: 100,
+    align: "center",
   };
 }
 
@@ -216,7 +230,7 @@ export function createEmptySection(): ProjectSectionData {
     id: crypto.randomUUID(),
     version: 2,
     layout: createDefaultLayout(),
-    style: { background: null, fullBleed: false, flushTop: false },
+    style: { background: null, width: "standard", flushTop: false },
     blocks: [createMediaBlock(), createTextBlock()],
   };
 }
@@ -305,6 +319,8 @@ function normalizeLegacySection(
     items: media ? [media] : [],
     blur: 0,
     slideshow: createDefaultSlideshow(),
+    widthPercent: 100,
+    align: "center",
   };
   const textBlock: TextBlock = {
     id: `${id}:t`,
@@ -317,7 +333,7 @@ function normalizeLegacySection(
   const layout = createDefaultLayout();
   const style: SectionStyle = {
     background: null,
-    fullBleed: false,
+    width: "standard",
     flushTop: false,
   };
 
@@ -375,6 +391,8 @@ function normalizeBlock(raw: unknown, fallbackId: string): SectionBlock | null {
       items,
       blur: oneOf(BLUR_LEVELS, raw.blur, 0),
       slideshow: normalizeSlideshow(raw.slideshow),
+      widthPercent: oneOf(BLOCK_WIDTH_OPTIONS, raw.widthPercent, 100),
+      align: oneOf(["left", "center", "right"] as const, raw.align, "center"),
     };
   }
 
@@ -445,7 +463,12 @@ function normalizeStyle(raw: unknown): SectionStyle {
   const style = isRecord(raw) ? raw : {};
   return {
     background: isValidHexColor(style.background) ? style.background : null,
-    fullBleed: style.fullBleed === true,
+    // Migrates the pre-width boolean: fullBleed: true → "full".
+    width: oneOf(
+      ["standard", "wide", "full"] as const,
+      style.width,
+      style.fullBleed === true ? "full" : "standard",
+    ),
     flushTop: style.flushTop === true,
   };
 }

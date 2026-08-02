@@ -62,16 +62,54 @@ const QUICK_COLORS = ["#ffffff", "#cccccc", "#000000"];
 export function RichTextToolbar({ editor }: { editor: Editor | null }) {
   const [linkUrl, setLinkUrl] = useState("");
   const [linkVariant, setLinkVariant] = useState<LinkVariant>("link");
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [sizeOpen, setSizeOpen] = useState(false);
+  const [colorOpen, setColorOpen] = useState(false);
   const [pickedColor, setPickedColor] = useState("#ffffff");
 
   if (!editor) return null;
 
+  function applyColor(hex: string | null) {
+    if (!editor) return;
+    setColorOpen(false);
+    if (hex === null) {
+      editor.chain().focus().unsetColor().run();
+      return;
+    }
+    editor.chain().focus().setColor(hex).run();
+  }
+
   function applyLink() {
     if (!editor) return;
-    if (!linkUrl.trim()) {
+    setLinkOpen(false);
+    const href = linkUrl.trim();
+    if (!href) {
       editor.chain().focus().unsetLink().run();
       return;
     }
+
+    // Nothing selected and not on an existing link: applying a mark would be
+    // invisible (it only affects future typing), which reads as "nothing
+    // happened". Insert pre-selected placeholder text instead, so the
+    // link/button shows up immediately and typing replaces the text.
+    if (editor.state.selection.empty && !editor.isActive("link")) {
+      const placeholder =
+        linkVariant === "link" ? "Lenketekst" : "Knappetekst";
+      const from = editor.state.selection.from;
+      editor
+        .chain()
+        .focus()
+        .insertContent({
+          type: "text",
+          text: placeholder,
+          marks: [{ type: "link", attrs: { href, variant: linkVariant } }],
+        })
+        .setTextSelection({ from, to: from + placeholder.length })
+        .run();
+      setLinkUrl("");
+      return;
+    }
+
     // setMark rather than setLink: setLink's typed signature doesn't know
     // about the custom variant attribute. extendMarkRange makes editing an
     // existing link update the whole link, not just the selection.
@@ -79,7 +117,7 @@ export function RichTextToolbar({ editor }: { editor: Editor | null }) {
       .chain()
       .focus()
       .extendMarkRange("link")
-      .setMark("link", { href: linkUrl.trim(), variant: linkVariant })
+      .setMark("link", { href, variant: linkVariant })
       .run();
     setLinkUrl("");
   }
@@ -153,7 +191,9 @@ export function RichTextToolbar({ editor }: { editor: Editor | null }) {
       <span className="mx-1 h-5 w-px bg-white/15" aria-hidden="true" />
 
       <Popover
+        open={linkOpen}
         onOpenChange={(open) => {
+          setLinkOpen(open);
           if (open) syncLinkStateFromSelection();
         }}
       >
@@ -178,6 +218,12 @@ export function RichTextToolbar({ editor }: { editor: Editor | null }) {
               <Input
                 value={linkUrl}
                 onChange={(event) => setLinkUrl(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    applyLink();
+                  }
+                }}
                 placeholder="https://…"
               />
               <Button type="button" size="sm" onClick={applyLink}>
@@ -207,7 +253,7 @@ export function RichTextToolbar({ editor }: { editor: Editor | null }) {
         </PopoverContent>
       </Popover>
 
-      <Popover>
+      <Popover open={sizeOpen} onOpenChange={setSizeOpen}>
         <PopoverTrigger
           render={
             <Button
@@ -226,9 +272,10 @@ export function RichTextToolbar({ editor }: { editor: Editor | null }) {
               <button
                 key={option.value}
                 type="button"
-                onClick={() =>
-                  editor.chain().focus().setFontSize(option.value).run()
-                }
+                onClick={() => {
+                  setSizeOpen(false);
+                  editor.chain().focus().setFontSize(option.value).run();
+                }}
                 className="cursor-pointer rounded px-2 py-1 text-left text-sm hover:bg-white/10"
               >
                 {option.label}
@@ -238,7 +285,7 @@ export function RichTextToolbar({ editor }: { editor: Editor | null }) {
         </PopoverContent>
       </Popover>
 
-      <Popover>
+      <Popover open={colorOpen} onOpenChange={setColorOpen}>
         <PopoverTrigger
           render={
             <Button
@@ -264,9 +311,7 @@ export function RichTextToolbar({ editor }: { editor: Editor | null }) {
               <Button
                 type="button"
                 size="sm"
-                onClick={() =>
-                  editor.chain().focus().setColor(pickedColor).run()
-                }
+                onClick={() => applyColor(pickedColor)}
               >
                 Bruk
               </Button>
@@ -277,7 +322,7 @@ export function RichTextToolbar({ editor }: { editor: Editor | null }) {
                   key={hex}
                   type="button"
                   title={hex}
-                  onClick={() => editor.chain().focus().setColor(hex).run()}
+                  onClick={() => applyColor(hex)}
                   className="h-6 w-6 cursor-pointer rounded-full border border-white/20"
                   style={{ backgroundColor: hex }}
                 />
@@ -288,7 +333,7 @@ export function RichTextToolbar({ editor }: { editor: Editor | null }) {
               variant="ghost"
               size="sm"
               className="justify-start"
-              onClick={() => editor.chain().focus().unsetColor().run()}
+              onClick={() => applyColor(null)}
             >
               Fjern farge
             </Button>
