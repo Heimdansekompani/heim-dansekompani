@@ -1,0 +1,101 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // One doc per account, doc ID == Firebase Auth uid. This is what lets a
+    // user "self-verify" by reading their own doc (used both by the /admin
+    // route guard and by the Cloudinary signing route, which has no Admin
+    // SDK available and instead calls the Firestore REST API with the
+    // caller's own ID token).
+    match /users/{uid} {
+      allow read: if request.auth != null
+        && (request.auth.uid == uid || isSignedInAdmin());
+      // A signed-in user may create only their own doc, and it must land
+      // exactly as 'pending' — every other role requires an existing admin
+      // to promote them via /admin/administratorer.
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.role == 'pending';
+      // A signed-in user may also update their own doc directly (profile
+      // name/address/photo), but not their own role — that still requires
+      // an existing admin. The email field may only be written to match
+      // the caller's own verified Auth token email, so it can't be forged
+      // and stays in sync once a verify-first email change completes.
+      allow update: if isSignedInAdmin() || isValidSelfProfileUpdate(uid);
+      allow delete: if isSignedInAdmin();
+    }
+
+    // Doc ID is the project's slug. Published projects are publicly
+    // readable; drafts and all writes require editor or admin. (Managing
+    // *who* has editor/admin access is still admin-only, via users/{uid}.)
+    match /projects/{slug} {
+      allow read: if resource.data.published == true || isEditorOrAbove();
+      allow write: if isEditorOrAbove();
+    }
+
+    // The whole "Personer" team list as a single doc — this is the public
+    // page's actual content, so it's publicly readable. Only editor/admin
+    // can write it.
+    match /settings/personer {
+      allow read: if true;
+      allow write: if isEditorOrAbove();
+    }
+
+    // The "Om" (about) page content as a single doc, built from the same
+    // flexible media+richText sections as projects — see settings/personer
+    // above for the equivalent pattern. Publicly readable, editor/admin write.
+    match /settings/om {
+      allow read: if true;
+      allow write: if isEditorOrAbove();
+    }
+
+    // Public contact form submissions: anyone can create one entry, but
+    // nobody (including the submitter) can read, update, or delete it back
+    // through the client SDK. Reading submissions should go through an
+    // authenticated admin view or the Firebase console.
+    match /contactSubmissions/{submissionId} {
+      allow create: if isValidContactSubmission(request.resource.data);
+      allow read, update, delete: if isSignedInAdmin();
+    }
+
+    // Deny everything else by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidContactSubmission(data) {
+      return data.keys().hasOnly(['name', 'email', 'message', 'createdAt'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && data.email is string && data.email.size() > 0 && data.email.size() <= 320
+        && data.message is string && data.message.size() > 0 && data.message.size() <= 5000
+        && data.createdAt == request.time;
+    }
+
+    function isSignedInAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isEditorOrAbove() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'editor'];
+    }
+
+    // A user editing their own doc can change name/address/photo, but the
+    // role field must stay exactly what it already was (no self-promotion),
+    // and the email field may only ever be written to match their own
+    // current Auth token email — never an arbitrary value — so it can't be
+    // forged, only kept in sync after a verified email change.
+    function isValidSelfProfileUpdate(uid) {
+      return request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null)
+        && request.resource.data.keys().hasOnly(['email', 'role', 'createdAt', 'name', 'address', 'photo']);
+    }
+  }
+}
