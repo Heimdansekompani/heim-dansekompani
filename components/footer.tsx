@@ -22,11 +22,11 @@ export function Footer() {
 
         <div className="flex flex-col gap-2 font-serif text-sm text-white/70">
           <a
-            href="mailto:post@heimdansekompani.no"
+            href="mailto:heimdansekompani@gmail.com"
             className="flex items-center gap-2 transition-colors hover:text-white"
           >
             <Mail className="h-4 w-4" />
-            post@heimdansekompani.no
+            heimdansekompani@gmail.com
           </a>          
           <a
             href="https://www.instagram.com/heimdansekompani/"

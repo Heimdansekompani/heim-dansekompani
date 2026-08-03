@@ -5,6 +5,9 @@ import { Footer } from "@/components/footer";
 import "./globals.css";
 import "next-cloudinary/dist/cld-video-player.css";
 
+import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from "@vercel/speed-insights/next"
+
 // The site's default body font — swap this (and the matching --font-roboto
 // reference in globals.css) if the client wants a different one later.
 const roboto = Roboto({

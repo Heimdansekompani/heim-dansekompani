@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <div className="relative -mt-20 flex min-h-dvh flex-col items-center justify-center overflow-hidden px-6 py-24 text-center">
       <video
-        className="absolute inset-0 -z-10 h-full w-full scale-110 object-cover blur-lg"
+        className="absolute inset-0 -z-10 h-full w-full scale-110 object-cover blur-sm"
         src="https://res.cloudinary.com/wmmws9et/video/upload/v1785517769/Heim_Nettside_Video_pyi4ww.mp4"
         autoPlay
         loop

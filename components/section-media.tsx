@@ -225,8 +225,26 @@ function MediaSlideshow({ block, playerId, sizes }: SectionMediaProps) {
     };
   }, [emblaApi]);
 
-  const scrollPrev = useCallback(() => emblaApi?.scrollPrev(), [emblaApi]);
-  const scrollNext = useCallback(() => emblaApi?.scrollNext(), [emblaApi]);
+  // In "jevn glidning" (continuous) mode, the AutoScroll plugin replaces
+  // Embla's scroll body with its own per-frame seek loop for as long as it's
+  // running — which keeps overriding any target set by scrollPrev/
+  // scrollNext/scrollTo, so manual navigation is silently swallowed. Calling
+  // reset() stops it immediately (restoring normal snap-based scrolling for
+  // this navigation) and re-arms it to resume once the triggered scroll
+  // settles. autoScroll is undefined outside continuous mode, so this is a
+  // no-op there.
+  const resetAutoScroll = useCallback(
+    () => emblaApi?.plugins().autoScroll?.reset(),
+    [emblaApi],
+  );
+  const scrollPrev = useCallback(() => {
+    resetAutoScroll();
+    emblaApi?.scrollPrev();
+  }, [emblaApi, resetAutoScroll]);
+  const scrollNext = useCallback(() => {
+    resetAutoScroll();
+    emblaApi?.scrollNext();
+  }, [emblaApi, resetAutoScroll]);
 
   // All slides share the first item's aspect ratio so the layout never jumps
   // mid-transition; other slides cover the box.
@@ -286,7 +304,10 @@ function MediaSlideshow({ block, playerId, sizes }: SectionMediaProps) {
               type="button"
               aria-label={`Gå til bilde ${index + 1}`}
               aria-current={index === selected}
-              onClick={() => emblaApi?.scrollTo(index)}
+              onClick={() => {
+                resetAutoScroll();
+                emblaApi?.scrollTo(index);
+              }}
               className={cn(
                 "size-2 cursor-pointer rounded-full transition-colors",
                 index === selected
