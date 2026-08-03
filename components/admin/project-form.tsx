@@ -37,6 +37,7 @@ import {
   type AttendanceDoc,
   type PerformanceDate,
 } from "@/lib/registration";
+import { requestRevalidate } from "@/lib/revalidate-client";
 import { isValidHexColor } from "@/lib/rich-text-constants";
 import {
   AlertDialog,
@@ -531,6 +532,7 @@ export function ProjectForm({ mode, slug, initialProject }: ProjectFormProps) {
 
       setSavedDateIds(performanceDates.map((d) => d.id));
       setSavedSnapshot(currentSnapshot);
+      requestRevalidate("projects");
     } catch {
       setError("Noe gikk galt under lagring. Prøv igjen.");
     } finally {
@@ -544,6 +546,7 @@ export function ProjectForm({ mode, slug, initialProject }: ProjectFormProps) {
     setDeleting(true);
     try {
       await deleteDoc(doc(db, "projects", currentDocId));
+      requestRevalidate("projects");
       router.push("/admin/prosjekter");
     } catch {
       setDeleting(false);

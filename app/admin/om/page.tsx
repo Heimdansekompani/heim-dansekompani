@@ -12,6 +12,7 @@ import {
   normalizeSections,
   type ProjectSectionData,
 } from "@/lib/project";
+import { requestRevalidate } from "@/lib/revalidate-client";
 import { isValidHexColor } from "@/lib/rich-text-constants";
 import { Button } from "@/components/ui/button";
 import { ColorField } from "@/components/admin/color-field";
@@ -103,6 +104,7 @@ export default function AdminOmPage() {
         updatedBy: user.uid,
       });
       setSavedSnapshot(JSON.stringify({ sections, pageBackground }));
+      requestRevalidate("om-content");
     } catch {
       setError("Noe gikk galt under lagring. Prøv igjen.");
     } finally {

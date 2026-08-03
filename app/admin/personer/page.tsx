@@ -7,6 +7,7 @@ import { db } from "@/lib/firebase";
 import { useCurrentAdmin } from "@/hooks/use-current-admin";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import { createEmptyPerson, type PersonEntry } from "@/lib/person";
+import { requestRevalidate } from "@/lib/revalidate-client";
 import { Button } from "@/components/ui/button";
 import { PersonEditor } from "@/components/admin/person-editor";
 import { SaveBar, type SaveStatus } from "@/components/admin/save-bar";
@@ -83,6 +84,7 @@ export default function AdminPersonerPage() {
         updatedBy: user.uid,
       });
       setSavedSnapshot(JSON.stringify(people));
+      requestRevalidate("personer-content");
     } catch {
       setError("Noe gikk galt under lagring. Prøv igjen.");
     } finally {

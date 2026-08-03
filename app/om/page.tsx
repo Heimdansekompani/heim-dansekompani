@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { unstable_cache } from "next/cache";
 import { doc, getDoc } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
@@ -12,25 +13,33 @@ export const metadata: Metadata = {
   title: "Om | Heim Dansekompani",
 };
 
-// Content is managed through the admin CMS, so this must never be statically
-// cached at build time.
-export const dynamic = "force-dynamic";
-
 interface OmContent {
   sections: ProjectSectionData[];
   pageBackground: string | null;
 }
 
-async function getOmContent(): Promise<OmContent> {
-  const snapshot = await getDoc(doc(db, "settings", "om"));
-  const data = snapshot.data();
-  return {
-    sections: normalizeSections(data?.sections),
-    pageBackground: isValidHexColor(data?.pageBackground)
-      ? data.pageBackground
-      : null,
-  };
-}
+// Content is managed through the admin CMS, so it can't be cached forever —
+// but it also doesn't need a fresh Firestore round-trip on every visit. The
+// admin editor calls /api/revalidate right after a save (see
+// app/admin/om/page.tsx), which invalidates this immediately; the 5-minute
+// window below is just a fallback in case that call is ever missed. No
+// ProjectSectionData field is a Firestore Timestamp, so this is safe to
+// cache as-is — contrast with app/prosjekter, which has to convert
+// Timestamps around the cache boundary (see lib/firestore-cache.ts).
+const getOmContent = unstable_cache(
+  async (): Promise<OmContent> => {
+    const snapshot = await getDoc(doc(db, "settings", "om"));
+    const data = snapshot.data();
+    return {
+      sections: normalizeSections(data?.sections),
+      pageBackground: isValidHexColor(data?.pageBackground)
+        ? data.pageBackground
+        : null,
+    };
+  },
+  ["om-content"],
+  { tags: ["om-content"], revalidate: 300 },
+);
 
 export default async function OmPage() {
   if (!(await isStaffRequest())) return <UnderConstruction />;

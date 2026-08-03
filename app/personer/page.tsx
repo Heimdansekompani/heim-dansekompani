@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { unstable_cache } from "next/cache";
 import { doc, getDoc } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
@@ -9,15 +10,22 @@ export const metadata: Metadata = {
   title: "Personer | Heim Dansekompani",
 };
 
-// Content is managed through the admin CMS, so this must never be statically
-// cached at build time.
-export const dynamic = "force-dynamic";
-
-async function getPeople(): Promise<PersonEntry[]> {
-  const snapshot = await getDoc(doc(db, "settings", "personer"));
-  const data = snapshot.data();
-  return Array.isArray(data?.people) ? data.people : [];
-}
+// Content is managed through the admin CMS, so it can't be cached forever —
+// but it also doesn't need a fresh Firestore round-trip on every visit. The
+// admin editor calls /api/revalidate right after a save (see
+// app/admin/personer/page.tsx), which invalidates this immediately; the
+// 5-minute window below is just a fallback in case that call is ever
+// missed. This page has no cookie-based gate (unlike om/prosjekter), so
+// without force-dynamic it renders statically between revalidations.
+const getPeople = unstable_cache(
+  async (): Promise<PersonEntry[]> => {
+    const snapshot = await getDoc(doc(db, "settings", "personer"));
+    const data = snapshot.data();
+    return Array.isArray(data?.people) ? data.people : [];
+  },
+  ["personer-content"],
+  { tags: ["personer-content"], revalidate: 300 },
+);
 
 export default async function PersonerPage() {
   const people = await getPeople();

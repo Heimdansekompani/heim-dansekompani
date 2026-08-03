@@ -15,6 +15,7 @@ import { CldImage } from "next-cloudinary";
 
 import { db } from "@/lib/firebase";
 import { THUMBNAIL_ASPECT_RATIO, type Project } from "@/lib/project";
+import { requestRevalidate } from "@/lib/revalidate-client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -54,6 +55,7 @@ export default function AdminProsjekterPage() {
         published: !project.published,
         updatedAt: serverTimestamp(),
       });
+      requestRevalidate("projects");
     } catch {
       setToggleError("Kunne ikke endre status. Prøv igjen.");
     } finally {

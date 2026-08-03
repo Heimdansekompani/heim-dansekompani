@@ -1,10 +1,12 @@
 import { cache } from "react";
 import type { Metadata } from "next";
+import { unstable_cache } from "next/cache";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { doc, getDoc, type Timestamp } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
+import { toCacheSafe, fromCacheSafe } from "@/lib/firestore-cache";
 import { normalizeSections, type Project } from "@/lib/project";
 import {
   normalizePerformanceDates,
@@ -15,8 +17,6 @@ import { isStaffRequest } from "@/lib/server-auth";
 import { EditProjectLink } from "@/components/edit-project-link";
 import { SectionList } from "@/components/section-list";
 import { UnderConstruction } from "@/components/under-construction";
-
-export const dynamic = "force-dynamic";
 
 // A plain helper (not a component) so the impure Date.now() read doesn't
 // trip React's component-purity lint rule — see app/prosjekter/page.tsx for
@@ -34,14 +34,35 @@ function formatDate(timestamp: Timestamp): string {
   });
 }
 
-// Deduped per request — generateMetadata and the page component both need
-// this, and the Firestore SDK's reads aren't covered by Next's fetch cache.
-const getProject = cache(async (slug: string): Promise<Project | null> => {
-  const snapshot = await getDoc(doc(db, "projects", slug));
-  if (!snapshot.exists()) return null;
+// Content is managed through the admin CMS, so it can't be cached forever —
+// but it also doesn't need a fresh Firestore round-trip on every visit. The
+// admin UI calls /api/revalidate right after a save/publish-toggle/delete
+// (see components/admin/project-form.tsx and app/admin/prosjekter/page.tsx),
+// which invalidates this immediately; the 5-minute window below is just a
+// fallback in case that call is ever missed.
+//
+// toCacheSafe/fromCacheSafe round-trip every Timestamp field (eventDate,
+// createdAt, updatedAt, and each performanceDates entry's startsAt) through
+// a JSON-safe marker, since unstable_cache persists its return value
+// through Vercel's Data Cache — an external store that would otherwise
+// silently strip Timestamp instances down to method-less plain objects.
+const getProjectCached = unstable_cache(
+  async (slug: string): Promise<Project | null> => {
+    const snapshot = await getDoc(doc(db, "projects", slug));
+    if (!snapshot.exists()) return null;
 
-  const project = snapshot.data() as Project;
-  return project.published ? project : null;
+    const project = snapshot.data() as Project;
+    return project.published ? toCacheSafe(project) : null;
+  },
+  ["project"],
+  { tags: ["projects"], revalidate: 300 },
+);
+
+// Deduped per request — generateMetadata and the page component both need
+// this.
+const getProject = cache(async (slug: string): Promise<Project | null> => {
+  const cached = await getProjectCached(slug);
+  return cached ? fromCacheSafe(cached) : null;
 });
 
 export async function generateMetadata({
