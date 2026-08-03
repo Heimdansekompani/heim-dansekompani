@@ -70,8 +70,8 @@ export async function isAdminUid(
   return (await fetchUserRole(uid, idToken)) === "admin";
 }
 
-// Mirrors hooks/use-current-admin.ts's isEditorOrAbove — editor and admin
-// count as staff for the public-page "under construction" gate.
+// Mirrors contexts/current-admin-context.tsx's isEditorOrAbove — editor and
+// admin count as staff for the public-page "under construction" gate.
 export async function isEditorOrAboveUid(
   uid: string,
   idToken: string,

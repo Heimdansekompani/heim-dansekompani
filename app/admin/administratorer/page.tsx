@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { collection, doc, onSnapshot, updateDoc } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
-import { useCurrentAdmin, type AdminRole } from "@/hooks/use-current-admin";
+import { type AdminRole } from "@/contexts/current-admin-context";
+import { useCurrentAdmin } from "@/hooks/use-current-admin";
 import { cn } from "@/lib/utils";
 
 interface AdminUser {

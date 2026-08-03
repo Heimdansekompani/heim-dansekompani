@@ -3,7 +3,8 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { isEditorOrAbove, useCurrentAdmin } from "@/hooks/use-current-admin";
+import { isEditorOrAbove } from "@/contexts/current-admin-context";
+import { useCurrentAdmin } from "@/hooks/use-current-admin";
 import { AdminNav } from "@/components/admin/admin-nav";
 
 const PUBLIC_ADMIN_PATHS = ["/admin/login", "/admin/register"];

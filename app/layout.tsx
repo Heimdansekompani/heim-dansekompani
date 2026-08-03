@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Playfair_Display, Roboto } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+
+import { CurrentAdminProvider } from "@/contexts/current-admin-context";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import "./globals.css";
 import "next-cloudinary/dist/cld-video-player.css";
-
-import { Analytics } from "@vercel/analytics/next"
-import { SpeedInsights } from "@vercel/speed-insights/next"
 
 // The site's default body font — swap this (and the matching --font-roboto
 // reference in globals.css) if the client wants a different one later.
@@ -51,9 +52,11 @@ export default function RootLayout({
       className={`dark ${roboto.variable} ${geistMono.variable} ${playfairDisplay.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-black text-white">
-        <Navbar />
-        <main className="flex-1 min-h-dvh pt-20">{children}</main>
-        <Footer />
+        <CurrentAdminProvider>
+          <Navbar />
+          <main className="flex-1 min-h-dvh pt-20">{children}</main>
+          <Footer />
+        </CurrentAdminProvider>
         <Analytics />
         <SpeedInsights />
       </body>

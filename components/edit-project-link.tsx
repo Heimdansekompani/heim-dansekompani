@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { Pencil } from "lucide-react";
 
-import { isEditorOrAbove, useCurrentAdmin } from "@/hooks/use-current-admin";
+import { isEditorOrAbove } from "@/contexts/current-admin-context";
+import { useCurrentAdmin } from "@/hooks/use-current-admin";
 import { Button } from "@/components/ui/button";
 
 // Only rendered for signed-in editors/admins — everyone else (including
