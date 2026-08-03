@@ -44,7 +44,7 @@ export async function verifyFirebaseIdToken(
  * `users/{uid}` self-read security rule — there's no Admin SDK / service
  * account involved.
  */
-async function fetchUserRole(
+export async function fetchUserRole(
   uid: string,
   idToken: string,
 ): Promise<string | null> {
