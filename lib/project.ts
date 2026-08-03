@@ -2,6 +2,7 @@ import type { JSONContent } from "@tiptap/core";
 import type { Timestamp } from "firebase/firestore";
 
 import type { CloudinaryCropRect } from "@/lib/cloudinary";
+import type { PerformanceDateMap } from "@/lib/registration";
 import { isValidHexColor } from "@/lib/rich-text-constants";
 
 // Landscape rather than the team's 4:5 portrait ratio — this is a cover
@@ -621,6 +622,12 @@ export interface Project {
   sections: ProjectSectionData[];
   // Page background hex; null/absent = the site's default black.
   pageBackground?: string | null;
+  // Performance/event fields — absent on projects that aren't events (and on
+  // everything created before the feature existed). The admin form always
+  // writes concrete values, never undefined. See lib/registration.ts for the
+  // map shape and why it's a map rather than an array.
+  registrationEnabled?: boolean;
+  performanceDates?: PerformanceDateMap;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   createdBy: string;

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Mail } from "lucide-react";
 
 import { InstagramIcon, FacebookIcon } from "@/components/icons/social";
+import { CONTACT_EMAIL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Kontakt | Heim Dansekompani",
@@ -10,8 +11,8 @@ export const metadata: Metadata = {
 const contactLinks = [
   {
     label: "E-post",
-    value: "post@heimdansekompani.no",
-    href: "mailto:post@heimdansekompani.no",
+    value: CONTACT_EMAIL,
+    href: `mailto:${CONTACT_EMAIL}`,
     icon: Mail,
   },
   {

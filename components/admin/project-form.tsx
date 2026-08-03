@@ -1,15 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  collection,
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   serverTimestamp,
   setDoc,
   Timestamp,
   updateDoc,
+  writeBatch,
 } from "firebase/firestore";
 import { CldImage, CldUploadWidget } from "next-cloudinary";
 
@@ -27,6 +31,12 @@ import {
   type ProjectSectionData,
   type ProjectThumbnail,
 } from "@/lib/project";
+import {
+  normalizePerformanceDates,
+  toPerformanceDateMap,
+  type AttendanceDoc,
+  type PerformanceDate,
+} from "@/lib/registration";
 import { isValidHexColor } from "@/lib/rich-text-constants";
 import {
   AlertDialog,
@@ -44,6 +54,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ColorField } from "@/components/admin/color-field";
+import {
+  PerformanceDateEditor,
+  type PerformanceDateDraft,
+} from "@/components/admin/performance-date-editor";
 import { SectionEditor } from "@/components/admin/section-editor";
 import { SectionPreview } from "@/components/admin/section-preview";
 import { SaveBar, type SaveStatus } from "@/components/admin/save-bar";
@@ -72,6 +86,80 @@ function slugify(value: string): string {
 function timestampToDateInputValue(timestamp: Timestamp | undefined): string {
   if (!timestamp) return "";
   return timestamp.toDate().toISOString().slice(0, 10);
+}
+
+function pad2(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+// Timestamp → the native date/time inputs' string values, in the browser's
+// local timezone (admins are in Norway; the public site pins Europe/Oslo at
+// display time instead). Deterministic on a given machine, so untouched
+// projects don't look dirty.
+function performanceDateToDraft(date: PerformanceDate): PerformanceDateDraft {
+  const local = date.startsAt.toDate();
+  return {
+    id: date.id,
+    date: `${local.getFullYear()}-${pad2(local.getMonth() + 1)}-${pad2(local.getDate())}`,
+    time: `${pad2(local.getHours())}:${pad2(local.getMinutes())}`,
+    location: date.location,
+    capacity: date.capacity,
+    price: date.price,
+  };
+}
+
+function draftsFromProject(project: Project | undefined): PerformanceDateDraft[] {
+  return normalizePerformanceDates(project?.performanceDates).map(
+    performanceDateToDraft,
+  );
+}
+
+// Inverse of performanceDateToDraft — "YYYY-MM-DDTHH:mm" parses as local
+// time, matching how the draft strings were produced.
+function draftToPerformanceDate(draft: PerformanceDateDraft): PerformanceDate {
+  return {
+    id: draft.id,
+    startsAt: Timestamp.fromDate(new Date(`${draft.date}T${draft.time}`)),
+    location: draft.location.trim(),
+    capacity: draft.capacity,
+    price: draft.price,
+  };
+}
+
+// A project rename moves the doc to a new path (see save() below) — without
+// this, its attendance counters and registrations would be left behind
+// under the old, now-nonexistent slug. Copies both subcollections to the
+// new slug (rewriting `projectSlug` on registrations) and removes them from
+// the old one; `removedDateIds` skips counters for dates that were deleted
+// in this same save, since there's nothing to carry forward for them.
+// Batched well under Firestore's 500-write limit for any realistic event.
+async function migrateEventSubcollections(
+  oldSlug: string,
+  newSlug: string,
+  removedDateIds: string[],
+): Promise<void> {
+  const [attendanceSnap, registrationsSnap] = await Promise.all([
+    getDocs(collection(db, "projects", oldSlug, "attendance")),
+    getDocs(collection(db, "projects", oldSlug, "registrations")),
+  ]);
+
+  const batch = writeBatch(db);
+  for (const docSnap of attendanceSnap.docs) {
+    if (removedDateIds.includes(docSnap.id)) continue;
+    batch.set(
+      doc(db, "projects", newSlug, "attendance", docSnap.id),
+      docSnap.data(),
+    );
+  }
+  for (const docSnap of registrationsSnap.docs) {
+    batch.set(doc(db, "projects", newSlug, "registrations", docSnap.id), {
+      ...docSnap.data(),
+      projectSlug: newSlug,
+    });
+  }
+  for (const docSnap of attendanceSnap.docs) batch.delete(docSnap.ref);
+  for (const docSnap of registrationsSnap.docs) batch.delete(docSnap.ref);
+  await batch.commit();
 }
 
 interface ProjectFormProps {
@@ -118,6 +206,23 @@ export function ProjectForm({ mode, slug, initialProject }: ProjectFormProps) {
   const [thumbnail, setThumbnail] = useState<ProjectThumbnail | null>(
     initialProject?.thumbnail ?? null,
   );
+  const [registrationEnabled, setRegistrationEnabled] = useState(
+    initialProject?.registrationEnabled ?? false,
+  );
+  const [performanceDates, setPerformanceDates] = useState<
+    PerformanceDateDraft[]
+  >(() => draftsFromProject(initialProject));
+  // The date ids that exist in Firestore as of the last save — diffed on the
+  // next save so removed dates get their attendance counters cleaned up.
+  const [savedDateIds, setSavedDateIds] = useState<string[]>(() =>
+    draftsFromProject(initialProject).map((draft) => draft.id),
+  );
+  // Reserved-ticket counts per dateId, loaded once for display in the date
+  // rows (and the remove-warning dialog). Purely informational — the
+  // authoritative counts live in Firestore and are enforced by rules.
+  const [takenByDateId, setTakenByDateId] = useState<Record<string, number>>(
+    {},
+  );
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -132,6 +237,8 @@ export function ProjectForm({ mode, slug, initialProject }: ProjectFormProps) {
         ? initialProject.pageBackground
         : null,
       thumbnail: initialProject?.thumbnail ?? null,
+      registrationEnabled: initialProject?.registrationEnabled ?? false,
+      performanceDates: draftsFromProject(initialProject),
     }),
   );
 
@@ -143,6 +250,8 @@ export function ProjectForm({ mode, slug, initialProject }: ProjectFormProps) {
     sections,
     pageBackground,
     thumbnail,
+    registrationEnabled,
+    performanceDates,
   });
   const isDirty = currentSnapshot !== savedSnapshot;
   const status: SaveStatus = submitting
@@ -175,6 +284,29 @@ export function ProjectForm({ mode, slug, initialProject }: ProjectFormProps) {
     setDeleteDialogOpen(open);
     if (open) setDeleteCountdown(DELETE_CONFIRM_DELAY_SECONDS);
   }
+
+  // Informational only (see takenByDateId above) — fetched once so the date
+  // rows can show reserved counts and warn before removing a date that has
+  // registrations. Never blocks the form from loading/saving.
+  useEffect(() => {
+    if (mode !== "edit" || !currentDocId) return;
+    let cancelled = false;
+    getDocs(collection(db, "projects", currentDocId, "attendance"))
+      .then((snapshot) => {
+        if (cancelled) return;
+        const counts: Record<string, number> = {};
+        for (const docSnap of snapshot.docs) {
+          counts[docSnap.id] = (docSnap.data() as AttendanceDoc).taken;
+        }
+        setTakenByDateId(counts);
+      })
+      .catch(() => {
+        // Non-critical — the rows just show no count.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, currentDocId]);
 
   function handleTitleChange(value: string) {
     setTitle(value);
@@ -211,6 +343,30 @@ export function ProjectForm({ mode, slug, initialProject }: ProjectFormProps) {
     });
   }
 
+  function addPerformanceDate() {
+    setPerformanceDates((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        date: "",
+        time: "",
+        location: "",
+        capacity: 50,
+        price: null,
+      },
+    ]);
+  }
+
+  function updatePerformanceDate(id: string, updated: PerformanceDateDraft) {
+    setPerformanceDates((prev) =>
+      prev.map((d) => (d.id === id ? updated : d)),
+    );
+  }
+
+  function removePerformanceDate(id: string) {
+    setPerformanceDates((prev) => prev.filter((d) => d.id !== id));
+  }
+
   async function save() {
     setError(null);
 
@@ -241,11 +397,37 @@ export function ProjectForm({ mode, slug, initialProject }: ProjectFormProps) {
       setError("Alle synlige bilde-/videoblokker må ha innhold.");
       return;
     }
+    if (registrationEnabled && performanceDates.length === 0) {
+      setError(
+        "Legg til minst én forestillingsdato, eller slå av påmelding.",
+      );
+      return;
+    }
+    if (
+      registrationEnabled &&
+      performanceDates.some(
+        (d) => !d.date || !d.time || !d.location.trim() || d.capacity < 1,
+      )
+    ) {
+      setError(
+        "Alle forestillingsdatoer må ha dato, tidspunkt, sted og kapasitet.",
+      );
+      return;
+    }
 
     setSubmitting(true);
     try {
       const eventTimestamp = Timestamp.fromDate(new Date(eventDate));
       const desiredDocId = slugValue.trim();
+      const performanceDateMap = toPerformanceDateMap(
+        performanceDates.map(draftToPerformanceDate),
+      );
+      // Dates removed from the form since the last save — their attendance
+      // counters get cleaned up below (and are excluded from the rename
+      // migration), but the registration docs themselves are kept.
+      const removedDateIds = savedDateIds.filter(
+        (id) => !performanceDates.some((d) => d.id === id),
+      );
 
       if (!currentDocId || desiredDocId !== currentDocId) {
         // First save, or the title-derived slug changed since the last one
@@ -276,6 +458,8 @@ export function ProjectForm({ mode, slug, initialProject }: ProjectFormProps) {
           thumbnail,
           sections,
           pageBackground,
+          registrationEnabled,
+          performanceDates: performanceDateMap,
           createdAt: initialProject?.createdAt ?? serverTimestamp(),
           updatedAt: serverTimestamp(),
           createdBy: initialProject?.createdBy ?? user.uid,
@@ -283,8 +467,16 @@ export function ProjectForm({ mode, slug, initialProject }: ProjectFormProps) {
         });
 
         // A rename (as opposed to the very first save) leaves a doc behind
-        // at the old path — this is a move, not a copy.
+        // at the old path — this is a move, not a copy. The event
+        // subcollections (attendance counters + registrations) would
+        // otherwise be orphaned under the old slug, so they move too, before
+        // the old parent doc is deleted.
         if (currentDocId) {
+          await migrateEventSubcollections(
+            currentDocId,
+            desiredDocId,
+            removedDateIds,
+          );
           await deleteDoc(doc(db, "projects", currentDocId));
           router.replace(`/admin/prosjekter/${desiredDocId}`);
         }
@@ -297,10 +489,21 @@ export function ProjectForm({ mode, slug, initialProject }: ProjectFormProps) {
           thumbnail,
           sections,
           pageBackground,
+          registrationEnabled,
+          performanceDates: performanceDateMap,
           updatedAt: serverTimestamp(),
         });
+        // Editors may write attendance freely (see firestore.rules) — this
+        // is cleanup, not something that needs to be part of the project
+        // write itself.
+        await Promise.all(
+          removedDateIds.map((id) =>
+            deleteDoc(doc(db, "projects", currentDocId, "attendance", id)),
+          ),
+        );
       }
 
+      setSavedDateIds(performanceDates.map((d) => d.id));
       setSavedSnapshot(currentSnapshot);
     } catch {
       setError("Noe gikk galt under lagring. Prøv igjen.");
@@ -463,6 +666,61 @@ export function ProjectForm({ mode, slug, initialProject }: ProjectFormProps) {
                 </Button>
               )}
             </CldUploadWidget>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-white/15 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <Label>Forestillinger og påmelding</Label>
+              <p className="mt-1 max-w-md font-serif text-sm text-white/50">
+                Legg til datoer med billettkapasitet, så kan publikum melde
+                seg på via en egen påmeldingsside. Knappen «Påmelding» vises
+                automatisk på prosjektsiden — du kan også lenke til den
+                selv med en knapp i en tekstblokk (
+                {`/prosjekter/${slugValue || "..."}/pamelding`}).
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="registrationEnabled">Åpne for påmelding</Label>
+                <Switch
+                  id="registrationEnabled"
+                  checked={registrationEnabled}
+                  onCheckedChange={setRegistrationEnabled}
+                />
+              </div>
+              {mode === "edit" && currentDocId && (
+                <Link
+                  href={`/admin/prosjekter/${currentDocId}/pameldinger`}
+                  className="text-xs text-white/50 underline-offset-4 hover:text-white hover:underline"
+                >
+                  Se påmeldinger →
+                </Link>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3">
+            {performanceDates.map((date, index) => (
+              <PerformanceDateEditor
+                key={date.id}
+                date={date}
+                index={index}
+                taken={takenByDateId[date.id] ?? null}
+                onChange={(updated) => updatePerformanceDate(date.id, updated)}
+                onRemove={() => removePerformanceDate(date.id)}
+              />
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="self-start"
+              onClick={addPerformanceDate}
+            >
+              Legg til dato
+            </Button>
           </div>
         </div>
 

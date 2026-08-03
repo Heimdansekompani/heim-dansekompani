@@ -32,6 +32,44 @@ service cloud.firestore {
     match /projects/{slug} {
       allow read: if resource.data.published == true || isEditorOrAbove();
       allow write: if isEditorOrAbove();
+
+      // Per-date seat counter: { taken: int }. Capacity lives on the parent
+      // project doc (performanceDates[dateId].capacity — a map keyed by
+      // dateId precisely so these rules can index it). Publicly readable
+      // (a count, no PII — needed for remaining-seat display). Anonymous
+      // writes may only move `taken` upward by the size of one registration
+      // (1–10 tickets) and never past capacity; the registration-create rule
+      // below ties the two writes together into one transaction via
+      // getAfter(). Editors may write freely: cancellation decrements,
+      // drift repair, and cleanup of removed dates.
+      match /attendance/{dateId} {
+        allow read: if true;
+        allow write: if isEditorOrAbove();
+        allow create: if isOpenForRegistration(slug, dateId)
+          && request.resource.data.keys().hasOnly(['taken'])
+          && request.resource.data.taken is int
+          && request.resource.data.taken >= 1
+          && request.resource.data.taken <= 10
+          && request.resource.data.taken <= dateCapacity(slug, dateId);
+        allow update: if isOpenForRegistration(slug, dateId)
+          && request.resource.data.keys().hasOnly(['taken'])
+          && request.resource.data.taken is int
+          && request.resource.data.taken >= resource.data.taken + 1
+          && request.resource.data.taken <= resource.data.taken + 10
+          && request.resource.data.taken <= dateCapacity(slug, dateId);
+      }
+
+      // Public event registrations (names + emails). Anyone can create one,
+      // but only as part of a transaction that also bumps the attendance
+      // counter by exactly `tickets` — see isValidRegistrationCreate — so
+      // capacity can never oversell. Nobody unauthenticated can ever read a
+      // registration back. Updates are disabled until a payment flow needs
+      // status transitions (that's a rules change, not a data migration).
+      match /registrations/{registrationId} {
+        allow read, delete: if isEditorOrAbove();
+        allow update: if false;
+        allow create: if isValidRegistrationCreate(slug, request.resource.data);
+      }
     }
 
     // The whole "Personer" team list as a single doc — this is the public
@@ -70,6 +108,57 @@ service cloud.firestore {
         && data.email is string && data.email.size() > 0 && data.email.size() <= 320
         && data.message is string && data.message.size() > 0 && data.message.size() <= 5000
         && data.createdAt == request.time;
+    }
+
+    function projectData(slug) {
+      return get(/databases/$(database)/documents/projects/$(slug)).data;
+    }
+
+    // Registration is open when the project is published, the toggle is on,
+    // the date exists, and it hasn't started yet. get('field', default)
+    // keeps this safe on project docs that predate the event fields.
+    function isOpenForRegistration(slug, dateId) {
+      return projectData(slug).published == true
+        && projectData(slug).get('registrationEnabled', false) == true
+        && dateId in projectData(slug).get('performanceDates', {})
+        && projectData(slug).performanceDates[dateId].startsAt > request.time;
+    }
+
+    function dateCapacity(slug, dateId) {
+      return projectData(slug).performanceDates[dateId].capacity;
+    }
+
+    function attendanceTakenBefore(slug, dateId) {
+      return exists(/databases/$(database)/documents/projects/$(slug)/attendance/$(dateId))
+        ? get(/databases/$(database)/documents/projects/$(slug)/attendance/$(dateId)).data.taken
+        : 0;
+    }
+
+    // Post-transaction state of the counter — this is what ties a
+    // registration create to its counter increment: if the same transaction
+    // didn't move `taken` up by exactly `tickets`, the create is denied.
+    function attendanceTakenAfter(slug, dateId) {
+      return getAfter(/databases/$(database)/documents/projects/$(slug)/attendance/$(dateId)).data.taken;
+    }
+
+    // The tickets range (1–10) is mirrored in lib/registration.ts
+    // MAX_TICKETS_PER_REGISTRATION — change both together.
+    function isValidRegistrationCreate(slug, data) {
+      return isOpenForRegistration(slug, data.dateId)
+        && data.keys().hasOnly(['name', 'email', 'tickets', 'dateId',
+             'projectSlug', 'projectTitle', 'status', 'pricePerTicket', 'createdAt'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 320
+        && data.tickets is int && data.tickets >= 1 && data.tickets <= 10
+        && data.dateId is string
+        && data.projectSlug == slug
+        && data.projectTitle is string && data.projectTitle.size() <= 300
+        && data.status == 'confirmed'
+        && data.pricePerTicket == null
+        && data.createdAt == request.time
+        && attendanceTakenAfter(slug, data.dateId)
+             == attendanceTakenBefore(slug, data.dateId) + data.tickets
+        && attendanceTakenAfter(slug, data.dateId) <= dateCapacity(slug, data.dateId);
     }
 
     function isSignedInAdmin() {

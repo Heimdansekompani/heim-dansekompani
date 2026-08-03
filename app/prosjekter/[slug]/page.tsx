@@ -1,15 +1,28 @@
 import { cache } from "react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { doc, getDoc, type Timestamp } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
 import { normalizeSections, type Project } from "@/lib/project";
-import { isValidHexColor } from "@/lib/rich-text-constants";
+import {
+  normalizePerformanceDates,
+  type PerformanceDate,
+} from "@/lib/registration";
+import { isValidHexColor, LINK_BUTTON_CLASS } from "@/lib/rich-text-constants";
 import { EditProjectLink } from "@/components/edit-project-link";
 import { SectionList } from "@/components/section-list";
 
 export const dynamic = "force-dynamic";
+
+// A plain helper (not a component) so the impure Date.now() read doesn't
+// trip React's component-purity lint rule — see app/prosjekter/page.tsx for
+// the same pattern.
+function hasUpcomingDate(dates: PerformanceDate[]): boolean {
+  const now = Date.now();
+  return dates.some((date) => date.startsAt.toMillis() > now);
+}
 
 function formatDate(timestamp: Timestamp): string {
   return timestamp.toDate().toLocaleDateString("nb-NO", {
@@ -58,6 +71,9 @@ export default async function ProsjektPage({
   const pageBackground = isValidHexColor(project.pageBackground)
     ? project.pageBackground
     : null;
+  const performanceDates = normalizePerformanceDates(project.performanceDates);
+  const registrationOpen =
+    project.registrationEnabled === true && hasUpcomingDate(performanceDates);
 
   return (
     // -mt-20/pt-20 pulls the page background up under the fixed h-20 navbar
@@ -79,6 +95,14 @@ export default async function ProsjektPage({
               <p className="mt-2 font-serif text-sm text-white/50">
                 {formatDate(project.eventDate)}
               </p>
+              {registrationOpen && (
+                <Link
+                  href={`/prosjekter/${project.slug}/pamelding`}
+                  className={`mt-4 ${LINK_BUTTON_CLASS.button}`}
+                >
+                  Påmelding
+                </Link>
+              )}
             </div>
             <EditProjectLink slug={project.slug} />
           </div>
