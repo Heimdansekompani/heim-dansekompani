@@ -114,6 +114,7 @@ export default async function RegistrationPage({
             startsAtMillis: date.startsAt.toMillis(),
             location: date.location,
             capacity: date.capacity,
+            durationMinutes: date.durationMinutes,
             price: date.price,
           }))}
           initialTakenByDateId={takenByDateId}

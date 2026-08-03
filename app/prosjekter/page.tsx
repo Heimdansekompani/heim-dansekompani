@@ -3,7 +3,9 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
 import type { Project } from "@/lib/project";
+import { isStaffRequest } from "@/lib/server-auth";
 import { ProjectCard } from "@/components/project-card";
+import { UnderConstruction } from "@/components/under-construction";
 
 export const metadata: Metadata = {
   title: "Prosjekter | Heim Dansekompani",
@@ -62,6 +64,8 @@ function splitByEventDate(projects: Project[]) {
 }
 
 export default async function ProsjekterPage() {
+  if (!(await isStaffRequest())) return <UnderConstruction />;
+
   const projects = await getPublishedProjects();
   const { upcoming, past } = splitByEventDate(projects);
 

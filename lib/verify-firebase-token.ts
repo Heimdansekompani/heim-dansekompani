@@ -39,25 +39,43 @@ export async function verifyFirebaseIdToken(
 }
 
 /**
- * Checks whether a uid has role 'admin' in Firestore, by calling the
- * Firestore REST API *as that user* (their own ID token as Bearer auth).
- * This only succeeds because of the `users/{uid}` self-read security rule —
- * there's no Admin SDK / service account involved.
+ * Reads a uid's role from Firestore by calling the REST API *as that user*
+ * (their own ID token as Bearer auth). This only succeeds because of the
+ * `users/{uid}` self-read security rule — there's no Admin SDK / service
+ * account involved.
  */
-export async function isAdminUid(
+async function fetchUserRole(
   uid: string,
   idToken: string,
-): Promise<boolean> {
+): Promise<string | null> {
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  if (!projectId) return false;
+  if (!projectId) return null;
 
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`;
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${idToken}` },
   });
 
-  if (!response.ok) return false;
+  if (!response.ok) return null;
 
   const data = await response.json();
-  return data?.fields?.role?.stringValue === "admin";
+  return data?.fields?.role?.stringValue ?? null;
+}
+
+/** Checks whether a uid has role 'admin' in Firestore. */
+export async function isAdminUid(
+  uid: string,
+  idToken: string,
+): Promise<boolean> {
+  return (await fetchUserRole(uid, idToken)) === "admin";
+}
+
+// Mirrors hooks/use-current-admin.ts's isEditorOrAbove — editor and admin
+// count as staff for the public-page "under construction" gate.
+export async function isEditorOrAboveUid(
+  uid: string,
+  idToken: string,
+): Promise<boolean> {
+  const role = await fetchUserRole(uid, idToken);
+  return role === "admin" || role === "editor";
 }

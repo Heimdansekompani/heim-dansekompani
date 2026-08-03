@@ -104,6 +104,7 @@ function performanceDateToDraft(date: PerformanceDate): PerformanceDateDraft {
     time: `${pad2(local.getHours())}:${pad2(local.getMinutes())}`,
     location: date.location,
     capacity: date.capacity,
+    durationMinutes: date.durationMinutes,
     price: date.price,
   };
 }
@@ -122,8 +123,22 @@ function draftToPerformanceDate(draft: PerformanceDateDraft): PerformanceDate {
     startsAt: Timestamp.fromDate(new Date(`${draft.date}T${draft.time}`)),
     location: draft.location.trim(),
     capacity: draft.capacity,
+    durationMinutes: draft.durationMinutes,
     price: draft.price,
   };
+}
+
+// Mirrors hasUpcomingDate in app/prosjekter/[slug]/page.tsx — a plain
+// helper (not called inline in the component body) so the impure
+// Date.now() read doesn't trip React's component-purity lint rule.
+function hasUpcomingDraft(drafts: PerformanceDateDraft[]): boolean {
+  const now = Date.now();
+  return drafts.some(
+    (draft) =>
+      draft.date &&
+      draft.time &&
+      new Date(`${draft.date}T${draft.time}`).getTime() > now,
+  );
 }
 
 // A project rename moves the doc to a new path (see save() below) — without
@@ -352,6 +367,7 @@ export function ProjectForm({ mode, slug, initialProject }: ProjectFormProps) {
         time: "",
         location: "",
         capacity: 50,
+        durationMinutes: 90,
         price: null,
       },
     ]);
@@ -365,6 +381,16 @@ export function ProjectForm({ mode, slug, initialProject }: ProjectFormProps) {
 
   function removePerformanceDate(id: string) {
     setPerformanceDates((prev) => prev.filter((d) => d.id !== id));
+  }
+
+  function duplicatePerformanceDate(id: string) {
+    setPerformanceDates((prev) => {
+      const index = prev.findIndex((d) => d.id === id);
+      if (index === -1) return prev;
+      const next = [...prev];
+      next.splice(index + 1, 0, { ...prev[index], id: crypto.randomUUID() });
+      return next;
+    });
   }
 
   async function save() {
@@ -674,10 +700,8 @@ export function ProjectForm({ mode, slug, initialProject }: ProjectFormProps) {
             <div>
               <Label>Forestillinger og påmelding</Label>
               <p className="mt-1 max-w-md font-serif text-sm text-white/50">
-                Legg til datoer med billettkapasitet, så kan publikum melde
-                seg på via en egen påmeldingsside. Knappen «Påmelding» vises
-                automatisk på prosjektsiden — du kan også lenke til den
-                selv med en knapp i en tekstblokk (
+                En egen påmelding knapp dukker opp på toppen av nettsida. 
+                Du kan og lage egen knapp med link til: (
                 {`/prosjekter/${slugValue || "..."}/pamelding`}).
               </p>
             </div>
@@ -710,6 +734,7 @@ export function ProjectForm({ mode, slug, initialProject }: ProjectFormProps) {
                 taken={takenByDateId[date.id] ?? null}
                 onChange={(updated) => updatePerformanceDate(date.id, updated)}
                 onRemove={() => removePerformanceDate(date.id)}
+                onDuplicate={() => duplicatePerformanceDate(date.id)}
               />
             ))}
             <Button
@@ -804,6 +829,10 @@ export function ProjectForm({ mode, slug, initialProject }: ProjectFormProps) {
                 })
               : undefined
           }
+          registrationOpen={
+            registrationEnabled && hasUpcomingDraft(performanceDates)
+          }
+          pameldingHref={`/prosjekter/${slugValue || "..."}/pamelding`}
           onClose={() => setPreviewOpen(false)}
         />
       )}

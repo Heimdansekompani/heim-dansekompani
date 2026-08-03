@@ -16,6 +16,7 @@ import {
 import { db } from "@/lib/firebase";
 import type { Project } from "@/lib/project";
 import {
+  formatDuration,
   formatPerformanceDate,
   normalizePerformanceDates,
   type AttendanceDoc,
@@ -262,7 +263,9 @@ function RegistrationSection({
           <h2 className="font-serif text-lg">
             {formatPerformanceDate(date.startsAt)}
           </h2>
-          <p className="text-xs text-white/50">{date.location}</p>
+          <p className="text-xs text-white/50">
+            {date.location} · {formatDuration(date.durationMinutes)}
+          </p>
         </div>
         <p className="text-xs text-white/50">
           {taken} av {date.capacity} billetter reservert ({registrations.length}{" "}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { Copy, Trash2 } from "lucide-react";
 
 import {
   AlertDialog,
@@ -35,6 +35,8 @@ export interface PerformanceDateDraft {
   time: string; // "HH:mm"
   location: string;
   capacity: number;
+  // Varighet i minutter.
+  durationMinutes: number;
   price: number | null;
 }
 
@@ -46,6 +48,7 @@ interface PerformanceDateEditorProps {
   taken: number | null;
   onChange: (date: PerformanceDateDraft) => void;
   onRemove: () => void;
+  onDuplicate: () => void;
 }
 
 // The native pickers only open from the calendar/clock icon, which browsers
@@ -69,6 +72,7 @@ export function PerformanceDateEditor({
   taken,
   onChange,
   onRemove,
+  onDuplicate,
 }: PerformanceDateEditorProps) {
   const hasRegistrations = taken !== null && taken > 0;
 
@@ -84,49 +88,60 @@ export function PerformanceDateEditor({
             </span>
           )}
         </p>
-        {hasRegistrations ? (
-          <AlertDialog>
-            <AlertDialogTrigger
-              render={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Fjern forestilling"
-                />
-              }
-            >
-              <Trash2 className="h-4 w-4" />
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Fjerne forestillingen?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Det finnes {taken} reserverte billetter til denne datoen.
-                  Fjerner du den, forsvinner datoen fra påmeldingssiden, men
-                  påmeldingene beholdes og vises under «Slettet dato» i
-                  påmeldingsoversikten.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                <AlertDialogAction onClick={onRemove}>
-                  Fjern forestilling
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        ) : (
+        <div className="flex items-center gap-1">
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label="Fjern forestilling"
-            onClick={onRemove}
+            aria-label="Dupliser forestilling"
+            onClick={onDuplicate}
           >
-            <Trash2 className="h-4 w-4" />
+            <Copy className="h-4 w-4" />
           </Button>
-        )}
+          {hasRegistrations ? (
+            <AlertDialog>
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Fjern forestilling"
+                  />
+                }
+              >
+                <Trash2 className="h-4 w-4" />
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Fjerne forestillingen?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Det finnes {taken} reserverte billetter til denne datoen.
+                    Fjerner du den, forsvinner datoen fra påmeldingssiden, men
+                    påmeldingene beholdes og vises under «Slettet dato» i
+                    påmeldingsoversikten.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                  <AlertDialogAction onClick={onRemove}>
+                    Fjern forestilling
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Fjern forestilling"
+              onClick={onRemove}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-4">
@@ -162,6 +177,27 @@ export function PerformanceDateEditor({
             }
             placeholder="F.eks. Kulturhuset, Storsalen"
           />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={`duration-${date.id}`}>Varighet (min)</Label>
+          <NumberField
+            value={date.durationMinutes}
+            min={1}
+            step={5}
+            onValueChange={(value) => {
+              if (value === null) return;
+              onChange({
+                ...date,
+                durationMinutes: Math.max(1, Math.round(value)),
+              });
+            }}
+          >
+            <NumberFieldGroup>
+              <NumberFieldDecrement>-</NumberFieldDecrement>
+              <NumberFieldInput id={`duration-${date.id}`} />
+              <NumberFieldIncrement>+</NumberFieldIncrement>
+            </NumberFieldGroup>
+          </NumberField>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={`capacity-${date.id}`}>Kapasitet</Label>

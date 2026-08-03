@@ -11,8 +11,10 @@ import {
   type PerformanceDate,
 } from "@/lib/registration";
 import { isValidHexColor, LINK_BUTTON_CLASS } from "@/lib/rich-text-constants";
+import { isStaffRequest } from "@/lib/server-auth";
 import { EditProjectLink } from "@/components/edit-project-link";
 import { SectionList } from "@/components/section-list";
+import { UnderConstruction } from "@/components/under-construction";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +65,9 @@ export default async function ProsjektPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+
+  if (!(await isStaffRequest())) return <UnderConstruction />;
+
   const project = await getProject(slug);
 
   if (!project) notFound();

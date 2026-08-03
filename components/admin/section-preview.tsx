@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Monitor, Smartphone, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SectionList } from "@/components/section-list";
 import type { ProjectSectionData } from "@/lib/project";
+import { LINK_BUTTON_CLASS } from "@/lib/rich-text-constants";
 import { cn } from "@/lib/utils";
 
 type PreviewMode = "desktop" | "mobile";
@@ -20,6 +22,11 @@ interface SectionPreviewProps {
   // Typography wrapper passed through to SectionList, so the preview
   // matches the hosting public page exactly (the om page sets one).
   contentClassName?: string;
+  // Mirrors app/prosjekter/[slug]/page.tsx's registrationOpen check — the
+  // "Påmelding" button only ever shows there when this is true, so the
+  // preview has to be told rather than deriving it itself.
+  registrationOpen?: boolean;
+  pameldingHref?: string;
   onClose: () => void;
 }
 
@@ -35,6 +42,8 @@ export function SectionPreview({
   title,
   subtitle,
   contentClassName,
+  registrationOpen,
+  pameldingHref,
   onClose,
 }: SectionPreviewProps) {
   const [mode, setMode] = useState<PreviewMode>("desktop");
@@ -131,6 +140,14 @@ export function SectionPreview({
               <p className="mt-2 font-serif text-sm text-white/50">
                 {subtitle}
               </p>
+            )}
+            {registrationOpen && pameldingHref && (
+              <Link
+                href={pameldingHref}
+                className={`mt-4 ${LINK_BUTTON_CLASS.button}`}
+              >
+                Påmelding
+              </Link>
             )}
           </div>
           <div className="mt-12">

@@ -11,6 +11,7 @@ import {
   REGISTRATION_EMAIL_MAX,
   REGISTRATION_NAME_MAX,
   SoldOutError,
+  formatDuration,
   formatPerformanceDate,
   submitRegistration,
   type AttendanceDoc,
@@ -35,6 +36,7 @@ export interface RegistrationFormDate {
   startsAtMillis: number;
   location: string;
   capacity: number;
+  durationMinutes: number;
   price: number | null;
 }
 
@@ -44,6 +46,7 @@ function toPerformanceDate(date: RegistrationFormDate): PerformanceDate {
     startsAt: Timestamp.fromMillis(date.startsAtMillis),
     location: date.location,
     capacity: date.capacity,
+    durationMinutes: date.durationMinutes,
     price: date.price,
   };
 }
@@ -211,7 +214,7 @@ export function RegistrationForm({
                     )}
                   </span>
                   <span className="block text-xs text-white/50">
-                    {date.location}
+                    {date.location} · {formatDuration(date.durationMinutes)}
                   </span>
                 </span>
               </span>

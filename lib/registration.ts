@@ -26,6 +26,8 @@ export interface PerformanceDate {
   location: string;
   // Total tickets available for this date.
   capacity: number;
+  // Varighet i minutter.
+  durationMinutes: number;
   // NOK per ticket; null = free. Not editable anywhere yet — reserved so a
   // future Vipps payment step won't need a data migration.
   price: number | null;
@@ -95,6 +97,13 @@ export function normalizePerformanceDates(raw: unknown): PerformanceDate[] {
         value.capacity > 0
           ? Math.round(value.capacity)
           : 0,
+      // Falls back to 60 for dates saved before this field existed.
+      durationMinutes:
+        typeof value.durationMinutes === "number" &&
+        Number.isFinite(value.durationMinutes) &&
+        value.durationMinutes > 0
+          ? Math.round(value.durationMinutes)
+          : 60,
       price:
         typeof value.price === "number" &&
         Number.isFinite(value.price) &&
@@ -122,6 +131,7 @@ export function toPerformanceDateMap(
       startsAt: date.startsAt,
       location: date.location,
       capacity: date.capacity,
+      durationMinutes: date.durationMinutes,
       price: date.price,
     };
   }
@@ -141,6 +151,14 @@ export function formatPerformanceDate(startsAt: Timestamp): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+export function formatDuration(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (hours === 0) return `${remainder} min`;
+  if (remainder === 0) return `${hours} t`;
+  return `${hours} t ${remainder} min`;
 }
 
 // The single choke point for creating a registration — a future confirmation

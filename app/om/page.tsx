@@ -4,7 +4,9 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { normalizeSections, type ProjectSectionData } from "@/lib/project";
 import { isValidHexColor } from "@/lib/rich-text-constants";
+import { isStaffRequest } from "@/lib/server-auth";
 import { SectionList } from "@/components/section-list";
+import { UnderConstruction } from "@/components/under-construction";
 
 export const metadata: Metadata = {
   title: "Om | Heim Dansekompani",
@@ -31,6 +33,8 @@ async function getOmContent(): Promise<OmContent> {
 }
 
 export default async function OmPage() {
+  if (!(await isStaffRequest())) return <UnderConstruction />;
+
   const { sections, pageBackground } = await getOmContent();
 
   return (
