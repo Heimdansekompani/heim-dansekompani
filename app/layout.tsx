@@ -54,6 +54,8 @@ export default function RootLayout({
         <Navbar />
         <main className="flex-1 min-h-dvh pt-20">{children}</main>
         <Footer />
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
