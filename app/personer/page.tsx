@@ -5,6 +5,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { PersonEntry } from "@/lib/person";
 import { PersonCard } from "@/components/person-card";
+import { Reveal } from "@/components/reveal";
 
 export const metadata: Metadata = {
   title: "Personer | Heim Dansekompani",
@@ -36,8 +37,12 @@ export default async function PersonerPage() {
         Personer
       </h1>
       <div className="mt-12 flex flex-col gap-16">
-        {people.map((person) => (
-          <PersonCard key={person.id} person={person} />
+        {people.map((person, index) => (
+          // Staggered the same way as ProjectGrid — capped so a long list
+          // doesn't leave the last cards waiting a long time to start.
+          <Reveal key={person.id} delayMs={Math.min(index * 75, 300)}>
+            <PersonCard person={person} />
+          </Reveal>
         ))}
         {people.length === 0 && (
           <p className="font-serif text-base leading-relaxed text-white/70 sm:text-lg">

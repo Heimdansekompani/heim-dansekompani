@@ -4,7 +4,6 @@ import { CldImage } from "next-cloudinary";
 
 import { PORTRAIT_ASPECT_RATIO, type PersonEntry } from "@/lib/person";
 import { isSafeHref } from "@/lib/rich-text-constants";
-import { lorem } from "next/dist/next-devtools/dev-overlay/utils/lorem";
 
 // next-cloudinary's components use hooks internally but don't ship their
 // own "use client" boundary, so they break when rendered straight from a
