@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { ProjectSection } from "@/components/project-section";
+import { Reveal } from "@/components/reveal";
 import type {
   ProjectSectionData,
   SectionWidth,
@@ -30,6 +31,11 @@ interface SectionListProps {
   // Typography for authored content, applied inside the @container root so
   // container variants in it (e.g. @2xl:text-lg) resolve correctly.
   className?: string;
+  // Fades each section in top-to-bottom as it scrolls into view. Off by
+  // default so the admin preview (components/admin/section-preview.tsx)
+  // doesn't replay the animation on every edit — only the public pages
+  // (app/om, app/prosjekter/[slug]) opt in.
+  animate?: boolean;
 }
 
 /**
@@ -48,6 +54,7 @@ export function SectionList({
   sections,
   idPrefix = "",
   className,
+  animate = false,
 }: SectionListProps) {
   return (
     <div className="@container">
@@ -67,7 +74,13 @@ export function SectionList({
             )}
           >
             <div className={cn(WIDTH_CLASS[section.style.width])}>
-              <ProjectSection section={section} idPrefix={idPrefix} />
+              {animate ? (
+                <Reveal>
+                  <ProjectSection section={section} idPrefix={idPrefix} />
+                </Reveal>
+              ) : (
+                <ProjectSection section={section} idPrefix={idPrefix} />
+              )}
             </div>
           </section>
         ))}

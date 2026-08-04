@@ -71,6 +71,7 @@ export default async function OmPage() {
             <SectionList
               sections={sections}
               className="font-serif text-base leading-relaxed text-white/80 @2xl:text-lg"
+              animate
             />
           )}
         </div>

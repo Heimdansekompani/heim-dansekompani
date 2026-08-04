@@ -134,7 +134,7 @@ export default async function ProsjektPage({
           </div>
         </div>
         <div className="mt-12">
-          <SectionList sections={sections} />
+          <SectionList sections={sections} animate />
         </div>
         <div className="mx-auto mt-16 max-w-6xl px-6">
           <div className="border-t border-white/10 pt-6 font-serif text-xs text-white/40">
