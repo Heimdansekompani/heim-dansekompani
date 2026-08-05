@@ -14,7 +14,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { LogoMark } from "@/components/logo-mark";
+import { Wordmark } from "@/components/wordmark";
 import { cn } from "@/lib/utils";
 import { useHideOnScroll } from "@/hooks/use-hide-on-scroll";
 
@@ -38,16 +38,8 @@ export function Navbar() {
       )}
     >
       <nav className="mx-auto flex h-20 max-w-6xl items-center justify-between px-6">
-        <Link href="/" className="flex items-center gap-3 text-white">
-          <LogoMark className="h-14 w-14" />
-          <span className="flex flex-col leading-none">
-            <span className="mr-[-0.25em] font-serif text-3xl font-semibold tracking-[0.25em] underline underline-offset-4">
-              HEIM
-            </span>
-            <span className="mr-[-0.02em] font-serif text-sm tracking-[0.1em]">
-              Dansekompani
-            </span>
-          </span>
+        <Link href="/" className="text-white">
+          <Wordmark withLogo />
         </Link>
 
         <ul className="hidden items-center gap-10 md:flex">
@@ -88,13 +80,8 @@ export function Navbar() {
             className="border-white/10 bg-black text-white"
           >
             <SheetHeader>
-              <SheetTitle className="flex flex-col leading-none text-white">
-                <span className="mr-[-0.25em] font-serif text-2xl tracking-[0.25em] underline underline-offset-6">
-                  HEIM
-                </span>
-                <span className="mt-0.5 mr-[-0.02em] font-serif text-xs tracking-[0.02em]">
-                  Dansekompani
-                </span>
+              <SheetTitle className="text-white">
+                <Wordmark size="sm" />
               </SheetTitle>
             </SheetHeader>
             <ul className="mt-4 flex flex-col gap-6 px-4">

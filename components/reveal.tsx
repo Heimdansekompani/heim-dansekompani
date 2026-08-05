@@ -58,7 +58,11 @@ export function Reveal({ children, className, delayMs = 0 }: RevealProps) {
           observer.disconnect();
         }
       },
-      { threshold: 0.15, rootMargin: "0px 0px -10% 0px" },
+      // Triggers as soon as an element is about to enter the viewport
+      // (100px of lead-in below the fold) rather than waiting for 15% of it
+      // to actually be visible — the old settings meant tall content (e.g.
+      // person cards) needed a lot of extra scrolling before revealing.
+      { threshold: 0.01, rootMargin: "0px 0px 100px 0px" },
     );
     observer.observe(node);
     return () => observer.disconnect();

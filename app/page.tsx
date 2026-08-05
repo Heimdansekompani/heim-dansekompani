@@ -61,8 +61,17 @@ export default function Home() {
         />
       </Reveal>
       <Reveal delayMs={100}>
-        <h1 className="font-serif text-6xl font-semibold tracking-[0.2em] sm:text-8xl lg:text-9xl underline underline-offset-6">
-          HEIM
+        <h1 className="font-serif text-6xl font-semibold sm:text-8xl lg:text-9xl">
+          {/* text-decoration on a flex container paints a separate underline
+              segment per flex item, breaking at "HEI"/"M"'s boundary — a
+              border-bottom is drawn once along the container's own edge
+              instead, so it can't have a seam. "M" carries no tracking, so
+              the container's width (and the border under it) end exactly at
+              its right edge, with no trailing letter-spacing left over. */}
+          <span className="flex border-b-[0.05em] border-current pb-[0.1em]">
+            <span className="tracking-[0.25em]">HEI</span>
+            <span>M</span>
+          </span>
         </h1>
       </Reveal>
       <Reveal delayMs={200}>
@@ -70,18 +79,10 @@ export default function Home() {
       </Reveal>
       <Reveal delayMs={300}>
         <p className="mt-8 max-w-xl font-serif text-base leading-relaxed text-white/80 sm:text-lg">
-          Et nyetablert dansekompani i skjæringspunktet mellom hip hop og
-          samtidsdans.
+          Der ulike praksiser møtes
         </p>
       </Reveal>
-      <Reveal delayMs={400}>
-        <Link
-          href="/om"
-          className="mt-10 font-serif text-sm tracking-wide text-white underline underline-offset-4 hover:text-white/80"
-        >
-          Les mer om kompaniet
-        </Link>
-      </Reveal>
+     
     </div>
   );
 }

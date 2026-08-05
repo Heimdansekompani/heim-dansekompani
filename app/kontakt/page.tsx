@@ -43,7 +43,7 @@ export default function KontaktPage() {
       </Reveal>
 
       <Reveal delayMs={150}>
-        <div className="mt-12 grid gap-4 sm:grid-cols-3">
+        <div className="mt-12 grid gap-3 sm:grid-cols-3">
           {contactLinks.map(({ label, value, href, icon: Icon }) => {
             const external = href.startsWith("http");
             return (
@@ -52,12 +52,12 @@ export default function KontaktPage() {
                 href={href}
                 target={external ? "_blank" : undefined}
                 rel={external ? "noopener noreferrer" : undefined}
-                className="group flex flex-col gap-4 border border-white/15 bg-white/5 p-6 transition-colors hover:border-white/30 hover:bg-white/10"
+                className="group flex flex-col gap-4 border border-white/15 bg-white/5 p-5 transition-colors hover:border-white/30 hover:bg-white/10"
               >
                 <Icon className="h-6 w-6 text-white/60 transition-colors group-hover:text-white" />
                 <div>
                   <p className="text-sm tracking-wide text-white/50">{label}</p>
-                  <p className="mt-1 font-serif text-base break-words text-white">
+                  <p className="mt-1 font-serif text-md whitespace-nowrap text-white">
                     {value}
                   </p>
                 </div>
