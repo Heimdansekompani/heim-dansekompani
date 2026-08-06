@@ -94,7 +94,7 @@ export default async function Home() {
           </h1>
         </Reveal>
         <Reveal delayMs={200}>
-          <p className="mt-2 font-serif text-2xl tracking-[0.2em] sm:text-4xl lg:text-5xl ">Dansekompani</p>
+          <p className="mt-2 mr-[-0.25em] font-serif text-2xl tracking-[0.2em] sm:text-4xl lg:text-5xl ">Dansekompani</p>
         </Reveal>
         <Reveal delayMs={300}>
           <p className="mt-8 max-w-xl font-serif text-base leading-relaxed text-white/80 sm:text-lg">
