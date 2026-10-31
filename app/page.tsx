@@ -4,7 +4,6 @@ import { LogoMark } from "@/components/logo-mark";
 import { ProjectGrid } from "@/components/project-grid";
 import { Reveal } from "@/components/reveal";
 import { getPublishedProjects, splitByEventDate } from "@/lib/projects";
-import { isStaffRequest } from "@/lib/server-auth";
 
 const HERO_VIDEO_PUBLIC_ID = "Heim_Nettside_Video_pyi4ww";
 // Matches BLUR_STRENGTH[1] in lib/project.ts (the "light" CMS blur level) —
@@ -45,17 +44,9 @@ const heroPosterSrc = getCldImageUrl({
 });
 
 export default async function Home() {
-  // Same soft-launch gate as /prosjekter, /personer — the public
-  // still gets the "under construction" placeholder there, so the home
-  // page shouldn't leak project content through this preview either.
-  // Skips the Firestore read entirely for anonymous visitors.
-  const isStaff = await isStaffRequest();
-  const upcomingProjects = isStaff
-    ? splitByEventDate(await getPublishedProjects()).upcoming.slice(
-        0,
-        HOME_PROJECT_COUNT,
-      )
-    : [];
+  const upcomingProjects = splitByEventDate(
+    await getPublishedProjects(),
+  ).upcoming.slice(0, HOME_PROJECT_COUNT);
 
   return (
     <>

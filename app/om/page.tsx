@@ -5,6 +5,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { normalizeSections, type ProjectSectionData } from "@/lib/project";
 import { isValidHexColor } from "@/lib/rich-text-constants";
+import { AdminEditLink } from "@/components/admin-edit-link";
 import { SectionList } from "@/components/section-list";
 
 export const metadata: Metadata = {
@@ -53,10 +54,11 @@ export default async function OmPage() {
       className="-mt-20 pt-20"
     >
       <div className="py-20 sm:py-28">
-        <div className="mx-auto max-w-6xl px-6">
+        <div className="mx-auto flex max-w-6xl items-start justify-between gap-4 px-6">
           <h1 className="font-serif text-3xl font-semibold tracking-[0.15em] sm:text-4xl">
             Om oss
           </h1>
+          <AdminEditLink href="/admin/om" label="Rediger side" />
         </div>
         <div className="mt-12">
           {sections.length === 0 ? (

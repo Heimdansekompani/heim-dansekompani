@@ -13,10 +13,8 @@ import {
   type PerformanceDate,
 } from "@/lib/registration";
 import { isValidHexColor, LINK_BUTTON_CLASS } from "@/lib/rich-text-constants";
-import { isStaffRequest } from "@/lib/server-auth";
-import { EditProjectLink } from "@/components/edit-project-link";
+import { AdminEditLink } from "@/components/admin-edit-link";
 import { SectionList } from "@/components/section-list";
-import { UnderConstruction } from "@/components/under-construction";
 
 // A plain helper (not a component) so the impure Date.now() read doesn't
 // trip React's component-purity lint rule — see app/prosjekter/page.tsx for
@@ -86,9 +84,6 @@ export default async function ProsjektPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-
-  if (!(await isStaffRequest())) return <UnderConstruction />;
-
   const project = await getProject(slug);
 
   if (!project) notFound();
@@ -130,7 +125,10 @@ export default async function ProsjektPage({
                 </Link>
               )}
             </div>
-            <EditProjectLink slug={project.slug} />
+            <AdminEditLink
+              href={`/admin/prosjekter/${project.slug}`}
+              label="Rediger prosjekt"
+            />
           </div>
         </div>
         <div className="mt-12">

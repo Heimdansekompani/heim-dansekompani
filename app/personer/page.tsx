@@ -4,6 +4,7 @@ import { doc, getDoc } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
 import type { PersonEntry } from "@/lib/person";
+import { AdminEditLink } from "@/components/admin-edit-link";
 import { PersonCard } from "@/components/person-card";
 import { Reveal } from "@/components/reveal";
 
@@ -16,8 +17,8 @@ export const metadata: Metadata = {
 // admin editor calls /api/revalidate right after a save (see
 // app/admin/personer/page.tsx), which invalidates this immediately; the
 // 5-minute window below is just a fallback in case that call is ever
-// missed. This page has no cookie-based gate (unlike om/prosjekter), so
-// without force-dynamic it renders statically between revalidations.
+// missed. This page has no cookie-based gate, so without force-dynamic it
+// renders statically between revalidations.
 const getPeople = unstable_cache(
   async (): Promise<PersonEntry[]> => {
     const snapshot = await getDoc(doc(db, "settings", "personer"));
@@ -33,9 +34,12 @@ export default async function PersonerPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-20 sm:py-28">
-      <h1 className="font-serif text-3xl font-semibold tracking-[0.15em] sm:text-4xl">
-        Personer
-      </h1>
+      <div className="flex items-start justify-between gap-4">
+        <h1 className="font-serif text-3xl font-semibold tracking-[0.15em] sm:text-4xl">
+          Personer
+        </h1>
+        <AdminEditLink href="/admin/personer" label="Rediger personer" />
+      </div>
       <div className="mt-12 flex flex-col gap-16">
         {people.map((person, index) => (
           // Staggered the same way as ProjectGrid — capped so a long list
