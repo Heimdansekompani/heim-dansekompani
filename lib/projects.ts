@@ -49,7 +49,7 @@ export const getPublishedProjects = unstable_cache(
 // A plain function (not a React component) so the impure Date.now() read
 // doesn't trip React's component-purity lint rule — it's exactly right to
 // check "now" fresh on every request.
-export function splitByEventDate(projects: ProjectListItem[]) {
+export function splitByEventDate<T extends ProjectListItem>(projects: T[]) {
   const now = Date.now();
 
   const upcoming = projects

@@ -2,7 +2,11 @@ import type { ProjectListItem } from "@/lib/projects";
 import { ProjectCard } from "@/components/project-card";
 import { Reveal } from "@/components/reveal";
 
-export function ProjectGrid({ projects }: { projects: ProjectListItem[] }) {
+export function ProjectGrid({
+  projects,
+}: {
+  projects: (ProjectListItem & { isDraft?: boolean })[];
+}) {
   return (
     <div className="mt-6 grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
       {projects.map((project, index) => (
@@ -14,13 +18,15 @@ export function ProjectGrid({ projects }: { projects: ProjectListItem[] }) {
             slug={project.slug}
             title={project.title}
             thumbnail={project.thumbnail}
-            formattedDate={new Date(
-              project.eventDateMillis,
-            ).toLocaleDateString("nb-NO", {
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })}
+            isDraft={project.isDraft}
+            formattedDate={new Date(project.eventDateMillis).toLocaleDateString(
+              "nb-NO",
+              {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              },
+            )}
           />
         </Reveal>
       ))}
