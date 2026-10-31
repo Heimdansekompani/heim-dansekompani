@@ -45,7 +45,7 @@ const heroPosterSrc = getCldImageUrl({
 });
 
 export default async function Home() {
-  // Same soft-launch gate as /prosjekter, /om, /personer — the public
+  // Same soft-launch gate as /prosjekter, /personer — the public
   // still gets the "under construction" placeholder there, so the home
   // page shouldn't leak project content through this preview either.
   // Skips the Firestore read entirely for anonymous visitors.
