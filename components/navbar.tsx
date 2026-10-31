@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Menu } from "lucide-react";
+import { Menu, Settings } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { isEditorOrAbove } from "@/contexts/current-admin-context";
+import { useCurrentAdmin } from "@/hooks/use-current-admin";
 import {
   Sheet,
   SheetClose,
@@ -29,6 +31,11 @@ export function Navbar() {
   const pathname = usePathname();
   const hidden = useHideOnScroll();
   const [open, setOpen] = useState(false);
+  // Same gate as app/admin/layout.tsx — only shown once the client-side auth
+  // state resolves, so anonymous visitors never see it flash in.
+  const { role } = useCurrentAdmin();
+  const showAdmin = isEditorOrAbove(role);
+  const adminActive = pathname.startsWith("/admin");
 
   return (
     <header
@@ -60,6 +67,21 @@ export function Navbar() {
               </li>
             );
           })}
+          {showAdmin && (
+            <li>
+              <Link
+                href="/admin"
+                className={cn(
+                  "flex items-center gap-1.5 rounded-full border border-white/20 px-3 py-1 font-serif text-sm tracking-wide text-white/70 transition-colors hover:border-white/40 hover:text-white",
+                  adminActive && "border-white/40 text-white",
+                )}
+                aria-current={adminActive ? "page" : undefined}
+              >
+                <Settings className="h-3.5 w-3.5" aria-hidden />
+                Admin
+              </Link>
+            </li>
+          )}
         </ul>
 
         <Sheet open={open} onOpenChange={setOpen}>
@@ -106,6 +128,25 @@ export function Navbar() {
                   </li>
                 );
               })}
+              {showAdmin && (
+                <li className="border-t border-white/10 pt-6">
+                  <SheetClose
+                    nativeButton={false}
+                    render={
+                      <Link
+                        href="/admin"
+                        className={cn(
+                          "flex items-center gap-2 font-serif text-lg tracking-wide text-white/70 hover:text-white",
+                          adminActive && "text-white",
+                        )}
+                      />
+                    }
+                  >
+                    <Settings className="h-4 w-4" aria-hidden />
+                    Admin
+                  </SheetClose>
+                </li>
+              )}
             </ul>
           </SheetContent>
         </Sheet>
